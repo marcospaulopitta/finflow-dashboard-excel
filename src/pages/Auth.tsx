@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import LoginForm from '@/components/auth/LoginForm';
 import RegisterForm from '@/components/auth/RegisterForm';
@@ -11,7 +10,7 @@ interface AuthProps {
 type AuthView = 'login' | 'register' | 'forgot-password';
 
 const Auth = ({ onLogin }: AuthProps) => {
-  const [currentView,] = useState<AuthView>('login');
+  const [currentView, setCurrentView] = useState<AuthView>('login');
 
   const handleShowRegister = () => setCurrentView('register');
   const handleShowLogin = () => setCurrentView('login');
