@@ -5,6 +5,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
 import { TrendingUp, TrendingDown, DollarSign, CreditCard, Calendar, Filter } from 'lucide-react';
+import { toast } from "@/hooks/use-toast";
 
 const Dashboard = () => {
   const [chartType, setChartType] = useState('bar');
@@ -62,6 +63,27 @@ const Dashboard = () => {
       bgColor: 'bg-purple-50',
     },
   ];
+
+  const handleNewExpense = () => {
+    toast({
+      title: "Nova Despesa",
+      description: "Funcionalidade de nova despesa será implementada em breve.",
+    });
+  };
+
+  const handleNewIncome = () => {
+    toast({
+      title: "Nova Receita",
+      description: "Funcionalidade de nova receita será implementada em breve.",
+    });
+  };
+
+  const handleNewCard = () => {
+    toast({
+      title: "Novo Cartão",
+      description: "Funcionalidade de novo cartão será implementada em breve.",
+    });
+  };
 
   const renderChart = () => {
     switch (chartType) {
@@ -198,15 +220,27 @@ const Dashboard = () => {
             <CardTitle className="text-lg">Ações Rápidas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-3">
-            <Button className="w-full justify-start" variant="outline">
+            <Button 
+              className="w-full justify-start" 
+              variant="outline"
+              onClick={handleNewExpense}
+            >
               <TrendingDown className="h-4 w-4 mr-2" />
               Nova Despesa
             </Button>
-            <Button className="w-full justify-start" variant="outline">
+            <Button 
+              className="w-full justify-start" 
+              variant="outline"
+              onClick={handleNewIncome}
+            >
               <TrendingUp className="h-4 w-4 mr-2" />
               Nova Receita
             </Button>
-            <Button className="w-full justify-start" variant="outline">
+            <Button 
+              className="w-full justify-start" 
+              variant="outline"
+              onClick={handleNewCard}
+            >
               <CreditCard className="h-4 w-4 mr-2" />
               Novo Cartão
             </Button>

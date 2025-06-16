@@ -1,16 +1,21 @@
 
 import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import Dashboard from '@/components/financial/Dashboard';
 import BankAccounts from '@/components/financial/BankAccounts';
 import CreditCards from '@/components/financial/CreditCards';
 import Expenses from '@/components/financial/Expenses';
 import Incomes from '@/components/financial/Incomes';
 import Categories from '@/components/financial/Categories';
-import { PieChart, CreditCard, Banknote, TrendingDown, TrendingUp, Tags, BarChart3 } from 'lucide-react';
+import { PieChart, CreditCard, Banknote, TrendingDown, TrendingUp, Tags, BarChart3, LogOut } from 'lucide-react';
 
-const Index = () => {
+interface IndexProps {
+  onLogout: () => void;
+}
+
+const Index = ({ onLogout }: IndexProps) => {
   const [activeTab, setActiveTab] = useState('dashboard');
 
   const tabs = [
@@ -26,13 +31,23 @@ const Index = () => {
     <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100">
       <div className="container mx-auto px-4 py-6">
         {/* Header */}
-        <div className="mb-8">
-          <h1 className="text-4xl font-bold text-gray-900 mb-2">
-            Sistema de Controle Financeiro
-          </h1>
-          <p className="text-lg text-gray-600">
-            Gerencie suas finanças pessoais de forma inteligente e organizada
-          </p>
+        <div className="mb-8 flex justify-between items-center">
+          <div>
+            <h1 className="text-4xl font-bold text-gray-900 mb-2">
+              Sistema de Controle Financeiro
+            </h1>
+            <p className="text-lg text-gray-600">
+              Gerencie suas finanças pessoais de forma inteligente e organizada
+            </p>
+          </div>
+          <Button 
+            variant="outline" 
+            onClick={onLogout}
+            className="flex items-center gap-2"
+          >
+            <LogOut className="h-4 w-4" />
+            Sair
+          </Button>
         </div>
 
         {/* Main Content */}
