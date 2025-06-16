@@ -6,6 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Mail, ArrowLeft } from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from '@/hooks/useAuth';
 
 interface ForgotPasswordFormProps {
   onShowLogin: () => void;
@@ -15,6 +16,7 @@ const ForgotPasswordForm = ({ onShowLogin }: ForgotPasswordFormProps) => {
   const [email, setEmail] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [emailSent, setEmailSent] = useState(false);
+  const { resetPassword } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -30,15 +32,31 @@ const ForgotPasswordForm = ({ onShowLogin }: ForgotPasswordFormProps) => {
 
     setIsLoading(true);
     
-    // Simular envio de email
-    setTimeout(() => {
-      setIsLoading(false);
-      setEmailSent(true);
+    try {
+      const { error } = await resetPassword(email);
+      
+      if (error) {
+        toast({
+          title: "Erro",
+          description: "Erro ao enviar email de recuperação. Verifique se o email está correto.",
+          variant: "destructive",
+        });
+      } else {
+        setEmailSent(true);
+        toast({
+          title: "Email enviado!",
+          description: "Verifique sua caixa de entrada para instruções de recuperação.",
+        });
+      }
+    } catch (error) {
       toast({
-        title: "Email enviado!",
-        description: "Verifique sua caixa de entrada para instruções de recuperação.",
+        title: "Erro",
+        description: "Ocorreu um erro inesperado. Tente novamente.",
+        variant: "destructive",
       });
-    }, 2000);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   if (emailSent) {

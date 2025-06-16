@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Lock, Mail } from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from '@/hooks/useAuth';
 
 interface LoginFormProps {
   onShowRegister: () => void;
@@ -19,6 +20,7 @@ const LoginForm = ({ onShowRegister, onShowForgotPassword, onLogin }: LoginFormP
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { signIn } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -34,15 +36,39 @@ const LoginForm = ({ onShowRegister, onShowForgotPassword, onLogin }: LoginFormP
 
     setIsLoading(true);
     
-    // Simular autenticação
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const { error } = await signIn(email, password);
+      
+      if (error) {
+        let errorMessage = "Erro ao fazer login. Verifique suas credenciais.";
+        
+        if (error.message.includes('Invalid login credentials')) {
+          errorMessage = "Email ou senha incorretos.";
+        } else if (error.message.includes('Email not confirmed')) {
+          errorMessage = "Por favor, confirme seu email antes de fazer login.";
+        }
+        
+        toast({
+          title: "Erro no Login",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Login realizado com sucesso!",
+          description: "Bem-vindo ao sistema financeiro.",
+        });
+        onLogin();
+      }
+    } catch (error) {
       toast({
-        title: "Login realizado com sucesso!",
-        description: "Bem-vindo ao sistema financeiro.",
+        title: "Erro",
+        description: "Ocorreu um erro inesperado. Tente novamente.",
+        variant: "destructive",
       });
-      onLogin();
-    }, 1500);
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (

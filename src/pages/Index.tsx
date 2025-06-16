@@ -10,13 +10,36 @@ import Expenses from '@/components/financial/Expenses';
 import Incomes from '@/components/financial/Incomes';
 import Categories from '@/components/financial/Categories';
 import { PieChart, CreditCard, Banknote, TrendingDown, TrendingUp, Tags, BarChart3, LogOut } from 'lucide-react';
+import { useAuth } from '@/hooks/useAuth';
+import { toast } from "@/hooks/use-toast";
 
-interface IndexProps {
-  onLogout: () => void;
-}
-
-const Index = ({ onLogout }: IndexProps) => {
+const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const { signOut } = useAuth();
+
+  const handleLogout = async () => {
+    try {
+      const { error } = await signOut();
+      if (error) {
+        toast({
+          title: "Erro",
+          description: "Erro ao fazer logout. Tente novamente.",
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Logout realizado",
+          description: "Você foi desconectado com sucesso.",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro inesperado.",
+        variant: "destructive",
+      });
+    }
+  };
 
   const tabs = [
     { id: 'dashboard', label: 'Resumo Geral', icon: BarChart3, component: Dashboard },
@@ -42,7 +65,7 @@ const Index = ({ onLogout }: IndexProps) => {
           </div>
           <Button 
             variant="outline" 
-            onClick={onLogout}
+            onClick={handleLogout}
             className="flex items-center gap-2"
           >
             <LogOut className="h-4 w-4" />

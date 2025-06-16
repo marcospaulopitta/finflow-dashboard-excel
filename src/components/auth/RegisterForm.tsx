@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Separator } from "@/components/ui/separator";
 import { Eye, EyeOff, Lock, Mail, User, Phone } from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from '@/hooks/useAuth';
 
 interface RegisterFormProps {
   onShowLogin: () => void;
@@ -26,6 +27,7 @@ const RegisterForm = ({ onShowLogin, onRegister }: RegisterFormProps) => {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
+  const { signUp } = useAuth();
 
   const generateNickname = (fullName: string) => {
     const names = fullName.trim().split(' ');
@@ -80,15 +82,48 @@ const RegisterForm = ({ onShowLogin, onRegister }: RegisterFormProps) => {
 
     setIsLoading(true);
     
-    // Simular registro
-    setTimeout(() => {
-      setIsLoading(false);
-      toast({
-        title: "Conta criada com sucesso!",
-        description: "Seja bem-vindo ao sistema financeiro.",
+    try {
+      const { error } = await signUp({
+        email: formData.email,
+        password: formData.password,
+        fullName: formData.fullName,
+        username: formData.username,
+        nickname: formData.nickname,
+        phone: formData.phone,
       });
-      onRegister();
-    }, 2000);
+      
+      if (error) {
+        let errorMessage = "Erro ao criar conta. Tente novamente.";
+        
+        if (error.message.includes('User already registered')) {
+          errorMessage = "Este email já está cadastrado. Tente fazer login.";
+        } else if (error.message.includes('Password should be at least 6 characters')) {
+          errorMessage = "A senha deve ter pelo menos 6 caracteres.";
+        } else if (error.message.includes('Unable to validate email address')) {
+          errorMessage = "Email inválido. Verifique o formato do email.";
+        }
+        
+        toast({
+          title: "Erro no Cadastro",
+          description: errorMessage,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Conta criada com sucesso!",
+          description: "Verifique seu email para confirmar a conta.",
+        });
+        onRegister();
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro inesperado. Tente novamente.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
