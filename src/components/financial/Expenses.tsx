@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,7 +16,7 @@ const Expenses = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingExpense, setEditingExpense] = useState(null);
+  const [editingExpense, setEditingExpense] = useState<any>(null);
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
@@ -75,7 +74,7 @@ const Expenses = () => {
       });
       setIsDialogOpen(false);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Erro",
         description: "Erro ao criar despesa: " + error.message,
@@ -107,7 +106,7 @@ const Expenses = () => {
       setEditingExpense(null);
       setIsDialogOpen(false);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Erro",
         description: "Erro ao atualizar despesa: " + error.message,
@@ -125,7 +124,7 @@ const Expenses = () => {
         description: "Despesa removida com sucesso!"
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Erro",
         description: "Erro ao remover despesa: " + error.message,
@@ -134,7 +133,7 @@ const Expenses = () => {
     }
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.description.trim() || !formData.amount || !formData.due_date) {
@@ -172,7 +171,7 @@ const Expenses = () => {
     }
   };
 
-  const handleEdit = (expense) => {
+  const handleEdit = (expense: any) => {
     setEditingExpense(expense);
     setFormData({
       description: expense.description,
@@ -188,19 +187,19 @@ const Expenses = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (id: string) => {
     deleteMutation.mutate(id);
   };
 
-  const totalExpenses = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+  const totalExpenses = expenses.reduce((sum, exp) => sum + Number(exp.amount), 0);
   const thisMonthExpenses = expenses.filter(exp => {
     const expenseDate = new Date(exp.due_date);
     const currentDate = new Date();
     return expenseDate.getMonth() === currentDate.getMonth() && 
            expenseDate.getFullYear() === currentDate.getFullYear();
-  }).reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
+  }).reduce((sum, exp) => sum + Number(exp.amount), 0);
 
-  const getRecurrenceColor = (recurrence) => {
+  const getRecurrenceColor = (recurrence: string) => {
     switch (recurrence) {
       case 'Única': return 'bg-gray-100 text-gray-800';
       case 'Semanal': return 'bg-blue-100 text-blue-800';
@@ -211,17 +210,17 @@ const Expenses = () => {
     }
   };
 
-  const getAccountName = (accountId) => {
+  const getAccountName = (accountId: string) => {
     const account = accounts.find(acc => acc.id === accountId);
     return account ? account.name : '';
   };
 
-  const getCreditCardName = (cardId) => {
+  const getCreditCardName = (cardId: string) => {
     const card = creditCards.find(c => c.id === cardId);
     return card ? card.name : '';
   };
 
-  const getCategoryName = (categoryId) => {
+  const getCategoryName = (categoryId: string) => {
     const category = categories.find(cat => cat.id === categoryId);
     return category ? category.name : '';
   };
@@ -522,11 +521,11 @@ const Expenses = () => {
                 
                 <div className="text-right">
                   <p className="text-2xl font-bold text-red-600">
-                    R$ {parseFloat(expense.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {Number(expense.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
                   {expense.installments > 1 && (
                     <p className="text-sm text-gray-500">
-                      {expense.installments}x de R$ {parseFloat(expense.installment_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      {expense.installments}x de R$ {Number(expense.installment_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </p>
                   )}
                 </div>

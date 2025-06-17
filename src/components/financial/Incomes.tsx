@@ -1,5 +1,4 @@
-
-import React, { useState, useEffect } from 'react';
+import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -17,7 +16,7 @@ const Incomes = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingIncome, setEditingIncome] = useState(null);
+  const [editingIncome, setEditingIncome] = useState<any>(null);
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
@@ -66,7 +65,7 @@ const Incomes = () => {
       });
       setIsDialogOpen(false);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Erro",
         description: "Erro ao criar receita: " + error.message,
@@ -96,7 +95,7 @@ const Incomes = () => {
       setEditingIncome(null);
       setIsDialogOpen(false);
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Erro",
         description: "Erro ao atualizar receita: " + error.message,
@@ -114,7 +113,7 @@ const Incomes = () => {
         description: "Receita removida com sucesso!"
       });
     },
-    onError: (error) => {
+    onError: (error: any) => {
       toast({
         title: "Erro",
         description: "Erro ao remover receita: " + error.message,
@@ -123,7 +122,7 @@ const Incomes = () => {
     }
   });
 
-  const handleSubmit = (e) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.description.trim() || !formData.amount || !formData.due_date) {
@@ -152,7 +151,7 @@ const Incomes = () => {
     }
   };
 
-  const handleEdit = (income) => {
+  const handleEdit = (income: any) => {
     setEditingIncome(income);
     setFormData({
       description: income.description,
@@ -166,19 +165,19 @@ const Incomes = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (id: string) => {
     deleteMutation.mutate(id);
   };
 
-  const totalIncomes = incomes.reduce((sum, inc) => sum + parseFloat(inc.amount), 0);
+  const totalIncomes = incomes.reduce((sum, inc) => sum + Number(inc.amount), 0);
   const thisMonthIncomes = incomes.filter(inc => {
     const incomeDate = new Date(inc.due_date);
     const currentDate = new Date();
     return incomeDate.getMonth() === currentDate.getMonth() && 
            incomeDate.getFullYear() === currentDate.getFullYear();
-  }).reduce((sum, inc) => sum + parseFloat(inc.amount), 0);
+  }).reduce((sum, inc) => sum + Number(inc.amount), 0);
 
-  const getRecurrenceColor = (recurrence) => {
+  const getRecurrenceColor = (recurrence: string) => {
     switch (recurrence) {
       case 'Única': return 'bg-gray-100 text-gray-800';
       case 'Semanal': return 'bg-blue-100 text-blue-800';
@@ -189,12 +188,12 @@ const Incomes = () => {
     }
   };
 
-  const getAccountName = (accountId) => {
+  const getAccountName = (accountId: string) => {
     const account = accounts.find(acc => acc.id === accountId);
     return account ? account.name : '';
   };
 
-  const getCategoryName = (categoryId) => {
+  const getCategoryName = (categoryId: string) => {
     const category = categories.find(cat => cat.id === categoryId);
     return category ? category.name : '';
   };
@@ -450,7 +449,7 @@ const Incomes = () => {
                 
                 <div className="text-right">
                   <p className="text-2xl font-bold text-green-600">
-                    R$ {parseFloat(income.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {Number(income.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
               </div>
