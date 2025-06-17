@@ -1,6 +1,6 @@
 
 import React, { useState } from 'react';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -10,53 +10,134 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, TrendingDown, Calendar, Edit, Trash2, Repeat } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { expensesService, bankAccountsService, creditCardsService, categoriesService } from "@/services/supabaseService";
 
 const Expenses = () => {
   const { toast } = useToast();
-  const [expenses, setExpenses] = useState([
-    { 
-      id: 1, 
-      description: 'Supermercado Pão de Açúcar', 
-      amount: 280.50, 
-      dueDate: '2024-06-20',
-      account: 'Conta Corrente Principal',
-      category: 'Alimentação',
-      recurrence: 'Única',
-      notes: 'Compras da semana'
-    },
-    { 
-      id: 2, 
-      description: 'Aluguel Apartamento', 
-      amount: 1500.00, 
-      dueDate: '2024-06-25',
-      account: 'Conta Corrente Principal',
-      category: 'Moradia',
-      recurrence: 'Mensal',
-      notes: 'Aluguel + taxas'
-    },
-  ]);
-
+  const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState(null);
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
-    dueDate: '',
-    account: '',
-    category: '',
+    due_date: '',
+    account_id: '',
+    credit_card_id: '',
+    category_id: '',
     recurrence: 'Única',
+    installments: '1',
     notes: ''
   });
 
-  // Mock data - em um app real, viria do estado global ou API
-  const accounts = ['Conta Corrente Principal', 'Conta Poupança', 'Visa Gold', 'Mastercard Black'];
-  const categories = ['Alimentação', 'Transporte', 'Moradia', 'Lazer', 'Saúde', 'Educação', 'Vestuário'];
+  // Fetch data
+  const { data: expenses = [], isLoading: expensesLoading } = useQuery({
+    queryKey: ['expenses'],
+    queryFn: expensesService.getAll
+  });
+
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['bank_accounts'],
+    queryFn: bankAccountsService.getAll
+  });
+
+  const { data: creditCards = [] } = useQuery({
+    queryKey: ['credit_cards'],
+    queryFn: creditCardsService.getAll
+  });
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: categoriesService.getAll
+  });
+
   const recurrenceOptions = ['Única', 'Semanal', 'Quinzenal', 'Mensal', 'Anual'];
+
+  // Mutations
+  const createMutation = useMutation({
+    mutationFn: expensesService.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      toast({
+        title: "Sucesso",
+        description: "Despesa criada com sucesso!"
+      });
+      setFormData({ 
+        description: '', 
+        amount: '', 
+        due_date: '',
+        account_id: '',
+        credit_card_id: '',
+        category_id: '', 
+        recurrence: 'Única',
+        installments: '1',
+        notes: '' 
+      });
+      setIsDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro",
+        description: "Erro ao criar despesa: " + error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string, updates: any }) => 
+      expensesService.update(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      toast({
+        title: "Sucesso",
+        description: "Despesa atualizada com sucesso!"
+      });
+      setFormData({ 
+        description: '', 
+        amount: '', 
+        due_date: '',
+        account_id: '',
+        credit_card_id: '',
+        category_id: '', 
+        recurrence: 'Única',
+        installments: '1',
+        notes: '' 
+      });
+      setEditingExpense(null);
+      setIsDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar despesa: " + error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: expensesService.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      toast({
+        title: "Sucesso",
+        description: "Despesa removida com sucesso!"
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro",
+        description: "Erro ao remover despesa: " + error.message,
+        variant: "destructive"
+      });
+    }
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    if (!formData.description.trim() || !formData.amount || !formData.dueDate) {
+    if (!formData.description.trim() || !formData.amount || !formData.due_date) {
       toast({
         title: "Erro",
         description: "Descrição, valor e data de vencimento são obrigatórios",
@@ -65,42 +146,30 @@ const Expenses = () => {
       return;
     }
 
-    const newExpense = {
-      id: editingExpense ? editingExpense.id : Date.now(),
+    const installments = parseInt(formData.installments) || 1;
+    const totalAmount = parseFloat(formData.amount);
+    const installmentAmount = installments > 1 ? totalAmount / installments : totalAmount;
+
+    const expenseData = {
       description: formData.description,
-      amount: parseFloat(formData.amount),
-      dueDate: formData.dueDate,
-      account: formData.account,
-      category: formData.category,
+      amount: totalAmount,
+      due_date: formData.due_date,
+      account_id: formData.account_id || null,
+      credit_card_id: formData.credit_card_id || null,
+      category_id: formData.category_id || null,
       recurrence: formData.recurrence,
-      notes: formData.notes
+      installments: installments,
+      current_installment: 1,
+      installment_amount: installmentAmount,
+      total_amount: totalAmount,
+      notes: formData.notes || null
     };
 
     if (editingExpense) {
-      setExpenses(expenses.map(exp => exp.id === editingExpense.id ? newExpense : exp));
-      toast({
-        title: "Sucesso",
-        description: "Despesa atualizada com sucesso!"
-      });
+      updateMutation.mutate({ id: editingExpense.id, updates: expenseData });
     } else {
-      setExpenses([...expenses, newExpense]);
-      toast({
-        title: "Sucesso",
-        description: "Despesa criada com sucesso!"
-      });
+      createMutation.mutate(expenseData);
     }
-
-    setFormData({ 
-      description: '', 
-      amount: '', 
-      dueDate: '', 
-      account: '', 
-      category: '', 
-      recurrence: 'Única', 
-      notes: '' 
-    });
-    setEditingExpense(null);
-    setIsDialogOpen(false);
   };
 
   const handleEdit = (expense) => {
@@ -108,30 +177,28 @@ const Expenses = () => {
     setFormData({
       description: expense.description,
       amount: expense.amount.toString(),
-      dueDate: expense.dueDate,
-      account: expense.account,
-      category: expense.category,
-      recurrence: expense.recurrence,
-      notes: expense.notes
+      due_date: expense.due_date,
+      account_id: expense.account_id || '',
+      credit_card_id: expense.credit_card_id || '',
+      category_id: expense.category_id || '',
+      recurrence: expense.recurrence || 'Única',
+      installments: expense.installments?.toString() || '1',
+      notes: expense.notes || ''
     });
     setIsDialogOpen(true);
   };
 
   const handleDelete = (id) => {
-    setExpenses(expenses.filter(exp => exp.id !== id));
-    toast({
-      title: "Sucesso",
-      description: "Despesa removida com sucesso!"
-    });
+    deleteMutation.mutate(id);
   };
 
-  const totalExpenses = expenses.reduce((sum, exp) => sum + exp.amount, 0);
+  const totalExpenses = expenses.reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
   const thisMonthExpenses = expenses.filter(exp => {
-    const expenseDate = new Date(exp.dueDate);
+    const expenseDate = new Date(exp.due_date);
     const currentDate = new Date();
     return expenseDate.getMonth() === currentDate.getMonth() && 
            expenseDate.getFullYear() === currentDate.getFullYear();
-  }).reduce((sum, exp) => sum + exp.amount, 0);
+  }).reduce((sum, exp) => sum + parseFloat(exp.amount), 0);
 
   const getRecurrenceColor = (recurrence) => {
     switch (recurrence) {
@@ -143,6 +210,29 @@ const Expenses = () => {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const getAccountName = (accountId) => {
+    const account = accounts.find(acc => acc.id === accountId);
+    return account ? account.name : '';
+  };
+
+  const getCreditCardName = (cardId) => {
+    const card = creditCards.find(c => c.id === cardId);
+    return card ? card.name : '';
+  };
+
+  const getCategoryName = (categoryId) => {
+    const category = categories.find(cat => cat.id === categoryId);
+    return category ? category.name : '';
+  };
+
+  if (expensesLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -161,10 +251,12 @@ const Expenses = () => {
                 setFormData({ 
                   description: '', 
                   amount: '', 
-                  dueDate: '', 
-                  account: '', 
-                  category: '', 
-                  recurrence: 'Única', 
+                  due_date: '',
+                  account_id: '',
+                  credit_card_id: '',
+                  category_id: '', 
+                  recurrence: 'Única',
+                  installments: '1',
                   notes: '' 
                 });
               }}
@@ -196,7 +288,7 @@ const Expenses = () => {
               
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="amount">Valor (R$) *</Label>
+                  <Label htmlFor="amount">Valor Total (R$) *</Label>
                   <Input
                     id="amount"
                     type="number"
@@ -208,12 +300,12 @@ const Expenses = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dueDate">Data de Vencimento *</Label>
+                  <Label htmlFor="due_date">Data de Vencimento *</Label>
                   <Input
-                    id="dueDate"
+                    id="due_date"
                     type="date"
-                    value={formData.dueDate}
-                    onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
+                    value={formData.due_date}
+                    onChange={(e) => setFormData({...formData, due_date: e.target.value})}
                     required
                   />
                 </div>
@@ -221,30 +313,58 @@ const Expenses = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="account">Conta/Cartão</Label>
-                  <Select value={formData.account} onValueChange={(value) => setFormData({...formData, account: value})}>
+                  <Label htmlFor="account_id">Conta Bancária</Label>
+                  <Select value={formData.account_id} onValueChange={(value) => setFormData({...formData, account_id: value, credit_card_id: ''})}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecionar conta" />
                     </SelectTrigger>
                     <SelectContent>
                       {accounts.map((account) => (
-                        <SelectItem key={account} value={account}>{account}</SelectItem>
+                        <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="category">Categoria</Label>
-                  <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                  <Label htmlFor="credit_card_id">Cartão de Crédito</Label>
+                  <Select value={formData.credit_card_id} onValueChange={(value) => setFormData({...formData, credit_card_id: value, account_id: ''})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecionar cartão" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {creditCards.map((card) => (
+                        <SelectItem key={card.id} value={card.id}>{card.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="category_id">Categoria</Label>
+                  <Select value={formData.category_id} onValueChange={(value) => setFormData({...formData, category_id: value})}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecionar categoria" />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((category) => (
-                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                        <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="installments">Parcelas</Label>
+                  <Input
+                    id="installments"
+                    type="number"
+                    min="1"
+                    max="48"
+                    value={formData.installments}
+                    onChange={(e) => setFormData({...formData, installments: e.target.value})}
+                    placeholder="1"
+                  />
                 </div>
               </div>
 
@@ -274,7 +394,7 @@ const Expenses = () => {
               </div>
 
               <div className="flex gap-2 pt-4">
-                <Button type="submit" className="flex-1">
+                <Button type="submit" className="flex-1" disabled={createMutation.isPending || updateMutation.isPending}>
                   {editingExpense ? 'Atualizar' : 'Criar Despesa'}
                 </Button>
                 <Button 
@@ -317,7 +437,7 @@ const Expenses = () => {
                 <p className="text-3xl font-bold">
                   R$ {thisMonthExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
-                <p className="text-orange-100 mt-1">Junho 2024</p>
+                <p className="text-orange-100 mt-1">{new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</p>
               </div>
               <div className="bg-white/20 p-3 rounded-full">
                 <Calendar className="h-8 w-8" />
@@ -350,6 +470,7 @@ const Expenses = () => {
                         variant="ghost"
                         onClick={() => handleDelete(expense.id)}
                         className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                        disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -359,7 +480,7 @@ const Expenses = () => {
                   <div className="flex flex-wrap gap-2 mb-3">
                     <Badge variant="outline" className="text-sm">
                       <Calendar className="h-3 w-3 mr-1" />
-                      {new Date(expense.dueDate).toLocaleDateString('pt-BR')}
+                      {new Date(expense.due_date).toLocaleDateString('pt-BR')}
                     </Badge>
                     {expense.recurrence !== 'Única' && (
                       <Badge className={`text-sm ${getRecurrenceColor(expense.recurrence)}`}>
@@ -367,14 +488,29 @@ const Expenses = () => {
                         {expense.recurrence}
                       </Badge>
                     )}
-                    {expense.category && (
+                    {expense.category_id && (
                       <Badge variant="secondary" className="text-sm">
-                        {expense.category}
+                        {getCategoryName(expense.category_id)}
                       </Badge>
                     )}
-                    {expense.account && (
+                    {expense.account_id && (
                       <Badge variant="outline" className="text-sm">
-                        {expense.account}
+                        {getAccountName(expense.account_id)}
+                      </Badge>
+                    )}
+                    {expense.credit_card_id && (
+                      <Badge variant="outline" className="text-sm">
+                        {getCreditCardName(expense.credit_card_id)}
+                      </Badge>
+                    )}
+                    {expense.installments > 1 && (
+                      <Badge variant="secondary" className="text-sm">
+                        {expense.current_installment}/{expense.installments}x
+                      </Badge>
+                    )}
+                    {expense.is_paid && (
+                      <Badge className="text-sm bg-green-100 text-green-800">
+                        Pago
                       </Badge>
                     )}
                   </div>
@@ -386,8 +522,13 @@ const Expenses = () => {
                 
                 <div className="text-right">
                   <p className="text-2xl font-bold text-red-600">
-                    R$ {expense.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {parseFloat(expense.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
+                  {expense.installments > 1 && (
+                    <p className="text-sm text-gray-500">
+                      {expense.installments}x de R$ {parseFloat(expense.installment_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                  )}
                 </div>
               </div>
             </CardContent>

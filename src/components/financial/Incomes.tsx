@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -10,53 +10,123 @@ import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, TrendingUp, Calendar, Edit, Trash2, Repeat } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { incomesService, bankAccountsService, categoriesService } from "@/services/supabaseService";
 
 const Incomes = () => {
   const { toast } = useToast();
-  const [incomes, setIncomes] = useState([
-    { 
-      id: 1, 
-      description: 'Salário Empresa XYZ', 
-      amount: 5000.00, 
-      dueDate: '2024-06-30',
-      account: 'Conta Corrente Principal',
-      category: 'Salário',
-      recurrence: 'Mensal',
-      notes: 'Salário líquido'
-    },
-    { 
-      id: 2, 
-      description: 'Freelance Design', 
-      amount: 800.00, 
-      dueDate: '2024-06-15',
-      account: 'Conta Corrente Principal',
-      category: 'Freelance',
-      recurrence: 'Única',
-      notes: 'Projeto de identidade visual'
-    },
-  ]);
-
+  const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingIncome, setEditingIncome] = useState(null);
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
-    dueDate: '',
-    account: '',
-    category: '',
+    due_date: '',
+    account_id: '',
+    category_id: '',
     recurrence: 'Única',
     notes: ''
   });
 
-  // Mock data - em um app real, viria do estado global ou API
-  const accounts = ['Conta Corrente Principal', 'Conta Poupança', 'Conta Salário'];
-  const categories = ['Salário', 'Freelance', 'Investimentos', 'Vendas', 'Aluguéis',  'Outros'];
+  // Fetch data
+  const { data: incomes = [], isLoading: incomesLoading } = useQuery({
+    queryKey: ['incomes'],
+    queryFn: incomesService.getAll
+  });
+
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['bank_accounts'],
+    queryFn: bankAccountsService.getAll
+  });
+
+  const { data: categories = [] } = useQuery({
+    queryKey: ['categories'],
+    queryFn: categoriesService.getAll
+  });
+
   const recurrenceOptions = ['Única', 'Semanal', 'Quinzenal', 'Mensal', 'Anual'];
+
+  // Mutations
+  const createMutation = useMutation({
+    mutationFn: incomesService.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incomes'] });
+      toast({
+        title: "Sucesso",
+        description: "Receita criada com sucesso!"
+      });
+      setFormData({ 
+        description: '', 
+        amount: '', 
+        due_date: '', 
+        account_id: '', 
+        category_id: '', 
+        recurrence: 'Única', 
+        notes: '' 
+      });
+      setIsDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro",
+        description: "Erro ao criar receita: " + error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const updateMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string, updates: any }) => 
+      incomesService.update(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incomes'] });
+      toast({
+        title: "Sucesso",
+        description: "Receita atualizada com sucesso!"
+      });
+      setFormData({ 
+        description: '', 
+        amount: '', 
+        due_date: '', 
+        account_id: '', 
+        category_id: '', 
+        recurrence: 'Única', 
+        notes: '' 
+      });
+      setEditingIncome(null);
+      setIsDialogOpen(false);
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar receita: " + error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  const deleteMutation = useMutation({
+    mutationFn: incomesService.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['incomes'] });
+      toast({
+        title: "Sucesso",
+        description: "Receita removida com sucesso!"
+      });
+    },
+    onError: (error) => {
+      toast({
+        title: "Erro",
+        description: "Erro ao remover receita: " + error.message,
+        variant: "destructive"
+      });
+    }
+  });
 
   const handleSubmit = (e) => {
     e.preventDefault();
     
-    if (!formData.description.trim() || !formData.amount || !formData.dueDate) {
+    if (!formData.description.trim() || !formData.amount || !formData.due_date) {
       toast({
         title: "Erro",
         description: "Descrição, valor e data de vencimento são obrigatórios",
@@ -65,42 +135,21 @@ const Incomes = () => {
       return;
     }
 
-    const newIncome = {
-      id: editingIncome ? editingIncome.id : Date.now(),
+    const incomeData = {
       description: formData.description,
       amount: parseFloat(formData.amount),
-      dueDate: formData.dueDate,
-      account: formData.account,
-      category: formData.category,
+      due_date: formData.due_date,
+      account_id: formData.account_id || null,
+      category_id: formData.category_id || null,
       recurrence: formData.recurrence,
-      notes: formData.notes
+      notes: formData.notes || null
     };
 
     if (editingIncome) {
-      setIncomes(incomes.map(inc => inc.id === editingIncome.id ? newIncome : inc));
-      toast({
-        title: "Sucesso",
-        description: "Receita atualizada com sucesso!"
-      });
+      updateMutation.mutate({ id: editingIncome.id, updates: incomeData });
     } else {
-      setIncomes([...incomes, newIncome]);
-      toast({
-        title: "Sucesso",
-        description: "Receita criada com sucesso!"
-      });
+      createMutation.mutate(incomeData);
     }
-
-    setFormData({ 
-      description: '', 
-      amount: '', 
-      dueDate: '', 
-      account: '', 
-      category: '', 
-      recurrence: 'Única', 
-      notes: '' 
-    });
-    setEditingIncome(null);
-    setIsDialogOpen(false);
   };
 
   const handleEdit = (income) => {
@@ -108,30 +157,26 @@ const Incomes = () => {
     setFormData({
       description: income.description,
       amount: income.amount.toString(),
-      dueDate: income.dueDate,
-      account: income.account,
-      category: income.category,
-      recurrence: income.recurrence,
-      notes: income.notes
+      due_date: income.due_date,
+      account_id: income.account_id || '',
+      category_id: income.category_id || '',
+      recurrence: income.recurrence || 'Única',
+      notes: income.notes || ''
     });
     setIsDialogOpen(true);
   };
 
   const handleDelete = (id) => {
-    setIncomes(incomes.filter(inc => inc.id !== id));
-    toast({
-      title: "Sucesso",
-      description: "Receita removida com sucesso!"
-    });
+    deleteMutation.mutate(id);
   };
 
-  const totalIncomes = incomes.reduce((sum, inc) => sum + inc.amount, 0);
+  const totalIncomes = incomes.reduce((sum, inc) => sum + parseFloat(inc.amount), 0);
   const thisMonthIncomes = incomes.filter(inc => {
-    const incomeDate = new Date(inc.dueDate);
+    const incomeDate = new Date(inc.due_date);
     const currentDate = new Date();
     return incomeDate.getMonth() === currentDate.getMonth() && 
            incomeDate.getFullYear() === currentDate.getFullYear();
-  }).reduce((sum, inc) => sum + inc.amount, 0);
+  }).reduce((sum, inc) => sum + parseFloat(inc.amount), 0);
 
   const getRecurrenceColor = (recurrence) => {
     switch (recurrence) {
@@ -143,6 +188,24 @@ const Incomes = () => {
       default: return 'bg-gray-100 text-gray-800';
     }
   };
+
+  const getAccountName = (accountId) => {
+    const account = accounts.find(acc => acc.id === accountId);
+    return account ? account.name : '';
+  };
+
+  const getCategoryName = (categoryId) => {
+    const category = categories.find(cat => cat.id === categoryId);
+    return category ? category.name : '';
+  };
+
+  if (incomesLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -161,9 +224,9 @@ const Incomes = () => {
                 setFormData({ 
                   description: '', 
                   amount: '', 
-                  dueDate: '', 
-                  account: '', 
-                  category: '', 
+                  due_date: '', 
+                  account_id: '', 
+                  category_id: '', 
                   recurrence: 'Única', 
                   notes: '' 
                 });
@@ -208,12 +271,12 @@ const Incomes = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="dueDate">Data de Recebimento *</Label>
+                  <Label htmlFor="due_date">Data de Recebimento *</Label>
                   <Input
-                    id="dueDate"
+                    id="due_date"
                     type="date"
-                    value={formData.dueDate}
-                    onChange={(e) => setFormData({...formData, dueDate: e.target.value})}
+                    value={formData.due_date}
+                    onChange={(e) => setFormData({...formData, due_date: e.target.value})}
                     required
                   />
                 </div>
@@ -221,27 +284,27 @@ const Incomes = () => {
 
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="account">Conta</Label>
-                  <Select value={formData.account} onValueChange={(value) => setFormData({...formData, account: value})}>
+                  <Label htmlFor="account_id">Conta</Label>
+                  <Select value={formData.account_id} onValueChange={(value) => setFormData({...formData, account_id: value})}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecionar conta" />
                     </SelectTrigger>
                     <SelectContent>
                       {accounts.map((account) => (
-                        <SelectItem key={account} value={account}>{account}</SelectItem>
+                        <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="category">Categoria</Label>
-                  <Select value={formData.category} onValueChange={(value) => setFormData({...formData, category: value})}>
+                  <Label htmlFor="category_id">Categoria</Label>
+                  <Select value={formData.category_id} onValueChange={(value) => setFormData({...formData, category_id: value})}>
                     <SelectTrigger>
                       <SelectValue placeholder="Selecionar categoria" />
                     </SelectTrigger>
                     <SelectContent>
                       {categories.map((category) => (
-                        <SelectItem key={category} value={category}>{category}</SelectItem>
+                        <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
@@ -274,7 +337,7 @@ const Incomes = () => {
               </div>
 
               <div className="flex gap-2 pt-4">
-                <Button type="submit" className="flex-1">
+                <Button type="submit" className="flex-1" disabled={createMutation.isPending || updateMutation.isPending}>
                   {editingIncome ? 'Atualizar' : 'Criar Receita'}
                 </Button>
                 <Button 
@@ -317,7 +380,7 @@ const Incomes = () => {
                 <p className="text-3xl font-bold">
                   R$ {thisMonthIncomes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
-                <p className="text-blue-100 mt-1">Junho 2024</p>
+                <p className="text-blue-100 mt-1">{new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</p>
               </div>
               <div className="bg-white/20 p-3 rounded-full">
                 <Calendar className="h-8 w-8" />
@@ -350,6 +413,7 @@ const Incomes = () => {
                         variant="ghost"
                         onClick={() => handleDelete(income.id)}
                         className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                        disabled={deleteMutation.isPending}
                       >
                         <Trash2 className="h-4 w-4" />
                       </Button>
@@ -359,7 +423,7 @@ const Incomes = () => {
                   <div className="flex flex-wrap gap-2 mb-3">
                     <Badge variant="outline" className="text-sm">
                       <Calendar className="h-3 w-3 mr-1" />
-                      {new Date(income.dueDate).toLocaleDateString('pt-BR')}
+                      {new Date(income.due_date).toLocaleDateString('pt-BR')}
                     </Badge>
                     {income.recurrence !== 'Única' && (
                       <Badge className={`text-sm ${getRecurrenceColor(income.recurrence)}`}>
@@ -367,14 +431,14 @@ const Incomes = () => {
                         {income.recurrence}
                       </Badge>
                     )}
-                    {income.category && (
+                    {income.category_id && (
                       <Badge variant="secondary" className="text-sm">
-                        {income.category}
+                        {getCategoryName(income.category_id)}
                       </Badge>
                     )}
-                    {income.account && (
+                    {income.account_id && (
                       <Badge variant="outline" className="text-sm">
-                        {income.account}
+                        {getAccountName(income.account_id)}
                       </Badge>
                     )}
                   </div>
@@ -386,7 +450,7 @@ const Incomes = () => {
                 
                 <div className="text-right">
                   <p className="text-2xl font-bold text-green-600">
-                    R$ {income.amount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {parseFloat(income.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </p>
                 </div>
               </div>
@@ -412,7 +476,7 @@ const Incomes = () => {
           </CardContent>
         </Card>
       )}
-    </div>
+    </div>  
   );
 };
 
