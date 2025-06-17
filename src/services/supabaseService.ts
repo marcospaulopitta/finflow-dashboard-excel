@@ -15,9 +15,20 @@ export type CreditCardInsert = Tables['credit_cards']['Insert'];
 export type IncomeInsert = Tables['incomes']['Insert'];
 export type ExpenseInsert = Tables['expenses']['Insert'];
 
+// Helper function to get authenticated user
+const getAuthenticatedUser = async () => {
+  const { data: { user }, error } = await supabase.auth.getUser();
+  if (error || !user) {
+    throw new Error('User not authenticated');
+  }
+  return user;
+};
+
 // Categories
 export const categoriesService = {
   async getAll(): Promise<Category[]> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { data, error } = await supabase
       .from('categories')
       .select('*')
@@ -28,8 +39,7 @@ export const categoriesService = {
   },
 
   async create(category: Omit<CategoryInsert, 'user_id'>): Promise<Category> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    const user = await getAuthenticatedUser();
 
     const { data, error } = await supabase
       .from('categories')
@@ -42,6 +52,8 @@ export const categoriesService = {
   },
 
   async update(id: string, updates: Partial<Omit<CategoryInsert, 'user_id'>>): Promise<Category> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { data, error } = await supabase
       .from('categories')
       .update(updates)
@@ -54,6 +66,8 @@ export const categoriesService = {
   },
 
   async delete(id: string): Promise<void> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { error } = await supabase
       .from('categories')
       .delete()
@@ -66,6 +80,8 @@ export const categoriesService = {
 // Bank Accounts
 export const bankAccountsService = {
   async getAll(): Promise<BankAccount[]> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { data, error } = await supabase
       .from('bank_accounts')
       .select('*')
@@ -76,8 +92,7 @@ export const bankAccountsService = {
   },
 
   async create(account: Omit<BankAccountInsert, 'user_id'>): Promise<BankAccount> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    const user = await getAuthenticatedUser();
 
     const { data, error } = await supabase
       .from('bank_accounts')
@@ -90,6 +105,8 @@ export const bankAccountsService = {
   },
 
   async update(id: string, updates: Partial<Omit<BankAccountInsert, 'user_id'>>): Promise<BankAccount> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { data, error } = await supabase
       .from('bank_accounts')
       .update(updates)
@@ -102,6 +119,8 @@ export const bankAccountsService = {
   },
 
   async delete(id: string): Promise<void> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { error } = await supabase
       .from('bank_accounts')
       .delete()
@@ -114,6 +133,8 @@ export const bankAccountsService = {
 // Credit Cards
 export const creditCardsService = {
   async getAll(): Promise<CreditCard[]> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { data, error } = await supabase
       .from('credit_cards')
       .select('*')
@@ -124,8 +145,7 @@ export const creditCardsService = {
   },
 
   async create(card: Omit<CreditCardInsert, 'user_id'>): Promise<CreditCard> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    const user = await getAuthenticatedUser();
 
     const { data, error } = await supabase
       .from('credit_cards')
@@ -138,6 +158,8 @@ export const creditCardsService = {
   },
 
   async update(id: string, updates: Partial<Omit<CreditCardInsert, 'user_id'>>): Promise<CreditCard> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { data, error } = await supabase
       .from('credit_cards')
       .update(updates)
@@ -150,6 +172,8 @@ export const creditCardsService = {
   },
 
   async delete(id: string): Promise<void> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { error } = await supabase
       .from('credit_cards')
       .delete()
@@ -162,6 +186,8 @@ export const creditCardsService = {
 // Incomes
 export const incomesService = {
   async getAll(): Promise<Income[]> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { data, error } = await supabase
       .from('incomes')
       .select('*')
@@ -172,8 +198,7 @@ export const incomesService = {
   },
 
   async create(income: Omit<IncomeInsert, 'user_id'>): Promise<Income> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    const user = await getAuthenticatedUser();
 
     const { data, error } = await supabase
       .from('incomes')
@@ -186,6 +211,8 @@ export const incomesService = {
   },
 
   async update(id: string, updates: Partial<Omit<IncomeInsert, 'user_id'>>): Promise<Income> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { data, error } = await supabase
       .from('incomes')
       .update(updates)
@@ -198,6 +225,8 @@ export const incomesService = {
   },
 
   async delete(id: string): Promise<void> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { error } = await supabase
       .from('incomes')
       .delete()
@@ -210,6 +239,8 @@ export const incomesService = {
 // Expenses
 export const expensesService = {
   async getAll(): Promise<Expense[]> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { data, error } = await supabase
       .from('expenses')
       .select('*')
@@ -220,8 +251,7 @@ export const expensesService = {
   },
 
   async create(expense: Omit<ExpenseInsert, 'user_id'>): Promise<Expense> {
-    const { data: { user } } = await supabase.auth.getUser();
-    if (!user) throw new Error('User not authenticated');
+    const user = await getAuthenticatedUser();
 
     const { data, error } = await supabase
       .from('expenses')
@@ -234,6 +264,8 @@ export const expensesService = {
   },
 
   async update(id: string, updates: Partial<Omit<ExpenseInsert, 'user_id'>>): Promise<Expense> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { data, error } = await supabase
       .from('expenses')
       .update(updates)
@@ -246,6 +278,8 @@ export const expensesService = {
   },
 
   async delete(id: string): Promise<void> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { error } = await supabase
       .from('expenses')
       .delete()
@@ -255,6 +289,8 @@ export const expensesService = {
   },
 
   async postponeUnpaid(): Promise<void> {
+    await getAuthenticatedUser(); // Ensure user is authenticated
+    
     const { error } = await supabase.rpc('postpone_unpaid_expenses');
     if (error) throw error;
   }
