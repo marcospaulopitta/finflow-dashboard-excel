@@ -5,20 +5,17 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Calendar, Filter, Download, Search } from 'lucide-react';
+import { Calendar, Filter, Download, TrendingUp, TrendingDown } from 'lucide-react';
 import { useQuery } from "@tanstack/react-query";
 import { incomesService, expensesService } from "@/services/supabaseService";
 
 const Reports = () => {
   const [filters, setFilters] = useState({
-    startDate: '',
-    endDate: '',
     name: '',
     minValue: '',
     maxValue: '',
     month: '',
-    year: new Date().getFullYear().toString(),
-    type: 'all'
+    year: new Date().getFullYear().toString()
   });
 
   // Fetch data
@@ -33,50 +30,47 @@ const Reports = () => {
   });
 
   // Filter data based on current filters
-  const filteredData = React.useMemo(() => {
-    let allData = [];
-    
-    if (filters.type === 'all' || filters.type === 'incomes') {
-      const filteredIncomes = incomes.map(income => ({
-        ...income,
-        type: 'income',
-        typeName: 'Receita'
-      }));
-      allData.push(...filteredIncomes);
-    }
-    
-    if (filters.type === 'all' || filters.type === 'expenses') {
-      const filteredExpenses = expenses.map(expense => ({
-        ...expense,
-        type: 'expense',
-        typeName: 'Despesa'
-      }));
-      allData.push(...filteredExpenses);
-    }
-
-    return allData.filter(item => {
-      const itemDate = new Date(item.due_date);
-      
-      // Date filter
-      if (filters.startDate && itemDate < new Date(filters.startDate)) return false;
-      if (filters.endDate && itemDate > new Date(filters.endDate)) return false;
+  const filteredIncomes = React.useMemo(() => {
+    return incomes.filter(income => {
+      const incomeDate = new Date(income.due_date);
       
       // Name filter
-      if (filters.name && !item.description.toLowerCase().includes(filters.name.toLowerCase())) return false;
+      if (filters.name && !income.description.toLowerCase().includes(filters.name.toLowerCase())) return false;
       
       // Value filter
-      if (filters.minValue && Number(item.amount) < Number(filters.minValue)) return false;
-      if (filters.maxValue && Number(item.amount) > Number(filters.maxValue)) return false;
+      if (filters.minValue && Number(income.amount) < Number(filters.minValue)) return false;
+      if (filters.maxValue && Number(income.amount) > Number(filters.maxValue)) return false;
       
       // Month filter
-      if (filters.month && itemDate.getMonth() !== Number(filters.month) - 1) return false;
+      if (filters.month && incomeDate.getMonth() !== Number(filters.month) - 1) return false;
       
       // Year filter
-      if (filters.year && itemDate.getFullYear() !== Number(filters.year)) return false;
+      if (filters.year && incomeDate.getFullYear() !== Number(filters.year)) return false;
       
       return true;
     }).sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime());
-  }, [incomes, expenses, filters]);
+  }, [incomes, filters]);
+
+  const filteredExpenses = React.useMemo(() => {
+    return expenses.filter(expense => {
+      const expenseDate = new Date(expense.due_date);
+      
+      // Name filter
+      if (filters.name && !expense.description.toLowerCase().includes(filters.name.toLowerCase())) return false;
+      
+      // Value filter
+      if (filters.minValue && Number(expense.amount) < Number(filters.minValue)) return false;
+      if (filters.maxValue && Number(expense.amount) > Number(filters.maxValue)) return false;
+      
+      // Month filter
+      if (filters.month && expenseDate.getMonth() !== Number(filters.month) - 1) return false;
+      
+      // Year filter
+      if (filters.year && expenseDate.getFullYear() !== Number(filters.year)) return false;
+      
+      return true;
+    }).sort((a, b) => new Date(b.due_date).getTime() - new Date(a.due_date).getTime());
+  }, [expenses, filters]);
 
   const handleFilterChange = (key: string, value: string) => {
     setFilters(prev => ({ ...prev, [key]: value }));
@@ -84,25 +78,22 @@ const Reports = () => {
 
   const clearFilters = () => {
     setFilters({
-      startDate: '',
-      endDate: '',
       name: '',
       minValue: '',
       maxValue: '',
       month: '',
-      year: new Date().getFullYear().toString(),
-      type: 'all'
+      year: new Date().getFullYear().toString()
     });
   };
 
   const exportReport = () => {
-    // Here you would implement the export functionality
-    console.log('Exporting report...', filteredData);
+    console.log('Exporting report...');
   };
 
-  const totalValue = filteredData.reduce((sum, item) => {
-    return sum + (item.type === 'income' ? Number(item.amount) : -Number(item.amount));
-  }, 0);
+  // Calculate totals
+  const totalIncomes = filteredIncomes.reduce((sum, income) => sum + Number(income.amount), 0);
+  const totalExpenses = filteredExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+  const monthBalance = totalIncomes - totalExpenses;
 
   const months = [
     { value: '1', label: 'Janeiro' },
@@ -152,29 +143,7 @@ const Reports = () => {
           </CardTitle>
         </CardHeader>
         <CardContent>
-          <div className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-5 gap-4">
-            {/* Date Range */}
-            <div className="space-y-2">
-              <Label htmlFor="startDate">Data Inicial</Label>
-              <Input
-                id="startDate"
-                type="date"
-                value={filters.startDate}
-                onChange={(e) => handleFilterChange('startDate', e.target.value)}
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="endDate">Data Final</Label>
-              <Input
-                id="endDate"
-                type="date"
-                value={filters.endDate}
-                onChange={(e) => handleFilterChange('endDate', e.target.value)}
-              />
-            </div>
-
-            {/* Name Filter */}
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-4">
             <div className="space-y-2">
               <Label htmlFor="name">Nome/Descrição</Label>
               <Input
@@ -185,7 +154,6 @@ const Reports = () => {
               />
             </div>
 
-            {/* Value Range */}
             <div className="space-y-2">
               <Label htmlFor="minValue">Valor Mínimo</Label>
               <Input
@@ -210,7 +178,6 @@ const Reports = () => {
               />
             </div>
 
-            {/* Month and Year */}
             <div className="space-y-2">
               <Label>Mês</Label>
               <Select value={filters.month} onValueChange={(value) => handleFilterChange('month', value)}>
@@ -243,113 +210,122 @@ const Reports = () => {
                 </SelectContent>
               </Select>
             </div>
-
-            {/* Type Filter */}
-            <div className="space-y-2">
-              <Label>Tipo</Label>
-              <Select value={filters.type} onValueChange={(value) => handleFilterChange('type', value)}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos</SelectItem>
-                  <SelectItem value="incomes">Receitas</SelectItem>
-                  <SelectItem value="expenses">Despesas</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
           </div>
         </CardContent>
       </Card>
 
-      {/* Summary Card */}
-      <Card className="border-0 shadow-lg">
-        <CardContent className="p-6">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Total de Registros</p>
-              <p className="text-2xl font-bold">{filteredData.length}</p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Saldo do Período</p>
-              <p className={`text-2xl font-bold ${totalValue >= 0 ? 'text-green-600' : 'text-red-600'}`}>
-                R$ {Math.abs(totalValue).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-              </p>
-            </div>
-            <div className="text-center">
-              <p className="text-sm text-gray-600">Receitas vs Despesas</p>
-              <p className="text-lg">
-                <span className="text-green-600">
-                  {filteredData.filter(item => item.type === 'income').length}
-                </span>
-                {' / '}
-                <span className="text-red-600">
-                  {filteredData.filter(item => item.type === 'expense').length}
-                </span>
-              </p>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Results */}
-      <Card className="border-0 shadow-lg">
-        <CardHeader>
-          <CardTitle>Resultados ({filteredData.length} registros)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {filteredData.length > 0 ? (
-            <div className="space-y-3">
-              {filteredData.map((item) => (
+      {/* Main Table with Two Columns */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Expenses Column */}
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-red-600">
+              <TrendingDown className="h-5 w-5" />
+              Despesas ({filteredExpenses.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {filteredExpenses.map((expense) => (
                 <div 
-                  key={`${item.type}-${item.id}`} 
-                  className={`p-4 rounded-lg border-l-4 ${
-                    item.type === 'income' 
-                      ? 'bg-green-50 border-green-500' 
-                      : 'bg-red-50 border-red-500'
-                  }`}
+                  key={expense.id}
+                  className="p-3 rounded-lg border-l-4 border-red-500 bg-red-50"
                 >
                   <div className="flex justify-between items-start">
                     <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-1">
-                        <span className={`text-xs px-2 py-1 rounded ${
-                          item.type === 'income' 
-                            ? 'bg-green-100 text-green-800' 
-                            : 'bg-red-100 text-red-800'
-                        }`}>
-                          {item.typeName}
-                        </span>
-                        <span className="text-sm text-gray-500">
-                          {new Date(item.due_date).toLocaleDateString('pt-BR')}
-                        </span>
-                      </div>
-                      <h4 className="font-semibold text-gray-900">{item.description}</h4>
-                      {item.notes && (
-                        <p className="text-sm text-gray-600 mt-1">{item.notes}</p>
+                      <h4 className="font-semibold text-gray-900">{expense.description}</h4>
+                      <p className="text-sm text-gray-600">
+                        {new Date(expense.due_date).toLocaleDateString('pt-BR')}
+                      </p>
+                      {expense.notes && (
+                        <p className="text-sm text-gray-500 mt-1">{expense.notes}</p>
                       )}
                     </div>
                     <div className="text-right">
-                      <p className={`text-xl font-bold ${
-                        item.type === 'income' ? 'text-green-600' : 'text-red-600'
-                      }`}>
-                        {item.type === 'expense' ? '-' : '+'}R$ {Number(item.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      <p className="text-lg font-bold text-red-600">
+                        -R$ {Number(expense.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                       </p>
                     </div>
                   </div>
                 </div>
               ))}
+              {filteredExpenses.length === 0 && (
+                <div className="text-center py-8">
+                  <TrendingDown className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                  <p className="text-gray-500">Nenhuma despesa encontrada</p>
+                </div>
+              )}
             </div>
-          ) : (
-            <div className="text-center py-12">
-              <Search className="h-12 w-12 mx-auto text-gray-400 mb-4" />
-              <h3 className="text-lg font-semibold text-gray-900 mb-2">
-                Nenhum resultado encontrado
-              </h3>
-              <p className="text-gray-600">
-                Tente ajustar os filtros para encontrar os dados desejados.
+          </CardContent>
+        </Card>
+
+        {/* Incomes Column */}
+        <Card className="border-0 shadow-lg">
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-green-600">
+              <TrendingUp className="h-5 w-5" />
+              Receitas ({filteredIncomes.length})
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-3 max-h-96 overflow-y-auto">
+              {filteredIncomes.map((income) => (
+                <div 
+                  key={income.id}
+                  className="p-3 rounded-lg border-l-4 border-green-500 bg-green-50"
+                >
+                  <div className="flex justify-between items-start">
+                    <div className="flex-1">
+                      <h4 className="font-semibold text-gray-900">{income.description}</h4>
+                      <p className="text-sm text-gray-600">
+                        {new Date(income.due_date).toLocaleDateString('pt-BR')}
+                      </p>
+                      {income.notes && (
+                        <p className="text-sm text-gray-500 mt-1">{income.notes}</p>
+                      )}
+                    </div>
+                    <div className="text-right">
+                      <p className="text-lg font-bold text-green-600">
+                        +R$ {Number(income.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              ))}
+              {filteredIncomes.length === 0 && (
+                <div className="text-center py-8">
+                  <TrendingUp className="h-8 w-8 mx-auto text-gray-400 mb-2" />
+                  <p className="text-gray-500">Nenhuma receita encontrada</p>
+                </div>
+              )}
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Footer with Totals */}
+      <Card className="border-0 shadow-lg">
+        <CardContent className="p-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div className="text-center">
+              <p className="text-sm text-gray-600">Total de Débitos</p>
+              <p className="text-2xl font-bold text-red-600">
+                R$ {totalExpenses.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
               </p>
             </div>
-          )}
+            <div className="text-center">
+              <p className="text-sm text-gray-600">Total de Receitas</p>
+              <p className="text-2xl font-bold text-green-600">
+                R$ {totalIncomes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+            <div className="text-center">
+              <p className="text-sm text-gray-600">Saldo do Mês</p>
+              <p className={`text-2xl font-bold ${monthBalance >= 0 ? 'text-green-600' : 'text-red-600'}`}>
+                {monthBalance >= 0 ? '+' : ''}R$ {Math.abs(monthBalance).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+            </div>
+          </div>
         </CardContent>
       </Card>
     </div>

@@ -5,10 +5,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, Plus, Minus } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, Plus, Minus, Edit } from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
-import { useQuery } from "@tanstack/react-query";
-import { incomesService, expensesService } from "@/services/supabaseService";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { incomesService, expensesService, bankAccountsService } from "@/services/supabaseService";
 import ExpenseForm from './forms/ExpenseForm';
 import IncomeForm from './forms/IncomeForm';
 
@@ -19,6 +19,10 @@ const Dashboard = () => {
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
   const [expenseFormOpen, setExpenseFormOpen] = useState(false);
   const [incomeFormOpen, setIncomeFormOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<any>(null);
+  const [editingIncome, setEditingIncome] = useState<any>(null);
+
+  const queryClient = useQueryClient();
 
   // Fetch data
   const { data: incomes = [] } = useQuery({
@@ -29,6 +33,41 @@ const Dashboard = () => {
   const { data: expenses = [] } = useQuery({
     queryKey: ['expenses'],
     queryFn: expensesService.getAll
+  });
+
+  const { data: accounts = [] } = useQuery({
+    queryKey: ['bank_accounts'],
+    queryFn: bankAccountsService.getAll
+  });
+
+  // Update expense mutation
+  const updateExpenseMutation = useMutation({
+    mutationFn: ({ id, updates }: { id: string, updates: any }) => 
+      expensesService.update(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
+      toast({
+        title: "Despesa Paga",
+        description: "A despesa foi marcada como paga e o valor foi deduzido da conta!"
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Erro",
+        description: "Erro ao pagar despesa: " + error.message,
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Update account balance mutation
+  const updateAccountMutation = useMutation({
+    mutationFn: ({ id, newBalance }: { id: string, newBalance: number }) => 
+      bankAccountsService.update(id, { balance: newBalance }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
+    }
   });
 
   // Calculate current month metrics
@@ -50,7 +89,30 @@ const Dashboard = () => {
   const totalPaid = currentMonthExpenses
     .filter(expense => expense.is_paid)
     .reduce((sum, expense) => sum + Number(expense.amount), 0);
-  const currentBalance = totalIncomes - totalPaid;
+
+  // Calculate previous month balance
+  const previousMonthBalance = useMemo(() => {
+    const previousMonth = new Date(currentDate);
+    previousMonth.setMonth(currentDate.getMonth() - 1);
+    
+    const prevMonthIncomes = incomes.filter(income => {
+      const incomeDate = new Date(income.due_date);
+      return incomeDate.getMonth() === previousMonth.getMonth() && 
+             incomeDate.getFullYear() === previousMonth.getFullYear();
+    }).reduce((sum, income) => sum + Number(income.amount), 0);
+
+    const prevMonthPaid = expenses.filter(expense => {
+      const expenseDate = new Date(expense.due_date);
+      return expenseDate.getMonth() === previousMonth.getMonth() && 
+             expenseDate.getFullYear() === previousMonth.getFullYear() &&
+             expense.is_paid;
+    }).reduce((sum, expense) => sum + Number(expense.amount), 0);
+
+    return prevMonthIncomes - prevMonthPaid;
+  }, [incomes, expenses, currentDate]);
+
+  // Current Balance = Previous Month Balance + Current Month Incomes - Total Paid
+  const currentBalance = previousMonthBalance + totalIncomes - totalPaid;
 
   // Generate chart data for different periods
   const generateChartData = () => {
@@ -91,7 +153,7 @@ const Dashboard = () => {
       categoryMap.set(category, current + Number(expense.amount));
     });
 
-    const colors = ['#8884d8', '#82ca9d', '#ffc658', '#ff7300', '#00ff00', '#ff8042'];
+    const colors = ['#ef4444', '#dc2626', '#b91c1c', '#991b1b', '#7f1d1d', '#fca5a5'];
     return Array.from(categoryMap.entries()).map(([name, value], index) => ({
       name,
       value,
@@ -106,18 +168,37 @@ const Dashboard = () => {
     }
   };
 
-  const handlePayExpense = async (expenseId: string) => {
+  const handlePayExpense = async (expense: any) => {
     try {
-      toast({
-        title: "Despesa Paga",
-        description: "A despesa foi marcada como paga com sucesso!"
+      // Find the account to deduct from
+      let targetAccount = null;
+      if (expense.account_id) {
+        targetAccount = accounts.find(acc => acc.id === expense.account_id);
+      } else if (expense.credit_card_id) {
+        // For credit card, we could implement different logic
+        // For now, let's just mark as paid without account deduction
+      }
+
+      // Update expense as paid
+      await updateExpenseMutation.mutateAsync({ 
+        id: expense.id, 
+        updates: { 
+          is_paid: true, 
+          paid_at: new Date().toISOString() 
+        } 
       });
+
+      // Deduct from account balance if applicable
+      if (targetAccount) {
+        const newBalance = Number(targetAccount.balance) - Number(expense.amount);
+        await updateAccountMutation.mutateAsync({
+          id: targetAccount.id,
+          newBalance: newBalance
+        });
+      }
+
     } catch (error) {
-      toast({
-        title: "Erro",
-        description: "Erro ao marcar despesa como paga",
-        variant: "destructive"
-      });
+      // Error handled by mutation
     }
   };
 
@@ -126,6 +207,16 @@ const Dashboard = () => {
       title: "Adiar Despesa",
       description: "Funcionalidade de adiamento será implementada em breve."
     });
+  };
+
+  const handleEditExpense = (expense: any) => {
+    setEditingExpense(expense);
+    setExpenseFormOpen(true);
+  };
+
+  const handleEditIncome = (income: any) => {
+    setEditingIncome(income);
+    setIncomeFormOpen(true);
   };
 
   const openExpensesReport = () => {
@@ -173,8 +264,8 @@ const Dashboard = () => {
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip formatter={(value) => [`R$ ${value}`, '']} />
-              <Line type="monotone" dataKey="receitas" stroke="#8884d8" strokeWidth={2} />
-              <Line type="monotone" dataKey="despesas" stroke="#82ca9d" strokeWidth={2} />
+              <Line type="monotone" dataKey="receitas" stroke="#16a34a" strokeWidth={2} />
+              <Line type="monotone" dataKey="despesas" stroke="#dc2626" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         );
@@ -186,8 +277,8 @@ const Dashboard = () => {
               <XAxis dataKey="name" />
               <YAxis />
               <Tooltip formatter={(value) => [`R$ ${value}`, '']} />
-              <Bar dataKey="receitas" fill="#8884d8" />
-              <Bar dataKey="despesas" fill="#82ca9d" />
+              <Bar dataKey="receitas" fill="#16a34a" />
+              <Bar dataKey="despesas" fill="#dc2626" />
             </BarChart>
           </ResponsiveContainer>
         );
@@ -244,7 +335,10 @@ const Dashboard = () => {
         
         <div className="flex flex-wrap gap-2 items-center">
           <Button 
-            onClick={() => setExpenseFormOpen(true)}
+            onClick={() => {
+              setEditingExpense(null);
+              setExpenseFormOpen(true);
+            }}
             variant="outline"
             size="sm"
             className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
@@ -254,7 +348,10 @@ const Dashboard = () => {
           </Button>
           
           <Button 
-            onClick={() => setIncomeFormOpen(true)}
+            onClick={() => {
+              setEditingIncome(null);
+              setIncomeFormOpen(true);
+            }}
             variant="outline"
             size="sm"
             className="bg-green-50 text-green-600 border-green-200 hover:bg-green-100"
@@ -356,9 +453,19 @@ const Dashboard = () => {
                           {new Date(income.due_date).toLocaleDateString('pt-BR')}
                         </p>
                       </div>
-                      <p className="font-bold text-green-600">
-                        R$ {Number(income.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                      </p>
+                      <div className="flex items-center gap-2">
+                        <p className="font-bold text-green-600">
+                          R$ {Number(income.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                        </p>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditIncome(income)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -389,7 +496,7 @@ const Dashboard = () => {
                             <Button 
                               size="sm" 
                               variant="outline"
-                              onClick={() => handlePayExpense(expense.id)}
+                              onClick={() => handlePayExpense(expense)}
                             >
                               Pagar
                             </Button>
@@ -402,6 +509,14 @@ const Dashboard = () => {
                             </Button>
                           </>
                         )}
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => handleEditExpense(expense)}
+                          className="h-8 w-8 p-0"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
                         {expense.is_paid && (
                           <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
                             Pago
@@ -437,13 +552,15 @@ const Dashboard = () => {
       {/* Expense Form */}
       <ExpenseForm 
         open={expenseFormOpen} 
-        onOpenChange={setExpenseFormOpen} 
+        onOpenChange={setExpenseFormOpen}
+        editingExpense={editingExpense}
       />
 
       {/* Income Form */}
       <IncomeForm 
         open={incomeFormOpen} 
-        onOpenChange={setIncomeFormOpen} 
+        onOpenChange={setIncomeFormOpen}
+        editingIncome={editingIncome}
       />
     </div>
   );
