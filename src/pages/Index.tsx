@@ -3,19 +3,22 @@ import React, { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
 import Dashboard from '@/components/financial/Dashboard';
 import BankAccounts from '@/components/financial/BankAccounts';
 import CreditCards from '@/components/financial/CreditCards';
 import Expenses from '@/components/financial/Expenses';
 import Incomes from '@/components/financial/Incomes';
-import Categories from '@/components/financial/Categories';
 import Reports from '@/components/financial/Reports';
-import { PieChart, CreditCard, Banknote, TrendingDown, TrendingUp, Tags, BarChart3, LogOut, FileText } from 'lucide-react';
+import Settings from '@/components/financial/Settings';
+import Profile from '@/components/financial/Profile';
+import { PieChart, CreditCard, Banknote, TrendingDown, TrendingUp, BarChart3, LogOut, FileText, Settings as SettingsIcon, User, Moon, Sun } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from "@/hooks/use-toast";
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
+  const [darkMode, setDarkMode] = useState(false);
   const { signOut } = useAuth();
 
   const handleLogout = async () => {
@@ -42,14 +45,21 @@ const Index = () => {
     }
   };
 
+  const toggleTheme = () => {
+    setDarkMode(!darkMode);
+    toast({
+      title: "Tema alterado",
+      description: `Tema ${!darkMode ? 'escuro' : 'claro'} ativado`,
+    });
+  };
+
   const tabs = [
-    { id: 'dashboard', label: 'Resumo Geral', icon: BarChart3, component: Dashboard },
+    { id: 'dashboard', label: 'Dashboard', icon: BarChart3, component: Dashboard },
     { id: 'reports', label: 'Relatórios', icon: FileText, component: Reports },
     { id: 'accounts', label: 'Contas Bancárias', icon: PieChart, component: BankAccounts },
     { id: 'cards', label: 'Cartões de Crédito', icon: CreditCard, component: CreditCards },
     { id: 'expenses', label: 'Despesas', icon: TrendingDown, component: Expenses },
     { id: 'incomes', label: 'Receitas', icon: TrendingUp, component: Incomes },
-    { id: 'categories', label: 'Categorias', icon: Tags, component: Categories },
   ];
 
   return (
@@ -65,14 +75,50 @@ const Index = () => {
               Gerencie suas finanças pessoais de forma inteligente e organizada
             </p>
           </div>
-          <Button 
-            variant="outline" 
-            onClick={handleLogout}
-            className="flex items-center gap-2"
-          >
-            <LogOut className="h-4 w-4" />
-            Sair
-          </Button>
+          
+          {/* Top Actions */}
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={toggleTheme}
+            >
+              {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            </Button>
+            
+            <Button 
+              variant="outline" 
+              size="sm"
+              onClick={() => setActiveTab('profile')}
+            >
+              <User className="h-4 w-4 mr-2" />
+              Perfil
+            </Button>
+            
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <SettingsIcon className="h-4 w-4 mr-2" />
+                  Configurações
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => setActiveTab('settings')}>
+                  <SettingsIcon className="h-4 w-4 mr-2" />
+                  Configurações Gerais
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+            
+            <Button 
+              variant="outline" 
+              onClick={handleLogout}
+              className="flex items-center gap-2"
+            >
+              <LogOut className="h-4 w-4" />
+              Sair
+            </Button>
+          </div>
         </div>
 
         {/* Main Content */}
@@ -80,7 +126,7 @@ const Index = () => {
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               {/* Tab Navigation */}
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 bg-gray-50/50 p-2 rounded-t-lg">
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6 bg-gray-50/50 p-2 rounded-t-lg">
                 {tabs.map((tab) => {
                   const IconComponent = tab.icon;
                   return (
@@ -106,6 +152,16 @@ const Index = () => {
                     </TabsContent>
                   );
                 })}
+                
+                {/* Settings Tab */}
+                <TabsContent value="settings" className="mt-0">
+                  <Settings />
+                </TabsContent>
+                
+                {/* Profile Tab */}
+                <TabsContent value="profile" className="mt-0">
+                  <Profile />
+                </TabsContent>
               </div>
             </Tabs>
           </CardContent>

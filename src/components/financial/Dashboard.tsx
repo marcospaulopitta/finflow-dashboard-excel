@@ -5,17 +5,20 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from 'recharts';
-import { TrendingUp, TrendingDown, DollarSign, Calendar, Filter, User, Settings, Moon, Sun } from 'lucide-react';
+import { TrendingUp, TrendingDown, DollarSign, Calendar, Plus, Minus } from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
 import { incomesService, expensesService } from "@/services/supabaseService";
+import ExpenseForm from './forms/ExpenseForm';
+import IncomeForm from './forms/IncomeForm';
 
 const Dashboard = () => {
   const [chartType, setChartType] = useState('bar');
   const [period, setPeriod] = useState('month');
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
   const [reportDialogOpen, setReportDialogOpen] = useState(false);
-  const [darkMode, setDarkMode] = useState(false);
+  const [expenseFormOpen, setExpenseFormOpen] = useState(false);
+  const [incomeFormOpen, setIncomeFormOpen] = useState(false);
 
   // Fetch data
   const { data: incomes = [] } = useQuery({
@@ -105,7 +108,6 @@ const Dashboard = () => {
 
   const handlePayExpense = async (expenseId: string) => {
     try {
-      // This would update the expense to paid status
       toast({
         title: "Despesa Paga",
         description: "A despesa foi marcada como paga com sucesso!"
@@ -242,21 +244,23 @@ const Dashboard = () => {
         
         <div className="flex flex-wrap gap-2 items-center">
           <Button 
-            variant="outline" 
+            onClick={() => setExpenseFormOpen(true)}
+            variant="outline"
             size="sm"
-            onClick={() => setDarkMode(!darkMode)}
+            className="bg-red-50 text-red-600 border-red-200 hover:bg-red-100"
           >
-            {darkMode ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
+            <Minus className="h-4 w-4 mr-2" />
+            Nova Despesa
           </Button>
           
-          <Button variant="outline" size="sm">
-            <User className="h-4 w-4 mr-2" />
-            Perfil
-          </Button>
-          
-          <Button variant="outline" size="sm">
-            <Settings className="h-4 w-4 mr-2" />
-            Configurações
+          <Button 
+            onClick={() => setIncomeFormOpen(true)}
+            variant="outline"
+            size="sm"
+            className="bg-green-50 text-green-600 border-green-200 hover:bg-green-100"
+          >
+            <Plus className="h-4 w-4 mr-2" />
+            Nova Receita
           </Button>
           
           <Select value={period} onValueChange={setPeriod}>
@@ -274,7 +278,6 @@ const Dashboard = () => {
           
           <Select value={chartType} onValueChange={setChartType}>
             <SelectTrigger className="w-[120px]">
-              <Filter className="h-4 w-4 mr-2" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -430,6 +433,18 @@ const Dashboard = () => {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Expense Form */}
+      <ExpenseForm 
+        open={expenseFormOpen} 
+        onOpenChange={setExpenseFormOpen} 
+      />
+
+      {/* Income Form */}
+      <IncomeForm 
+        open={incomeFormOpen} 
+        onOpenChange={setIncomeFormOpen} 
+      />
     </div>
   );
 };
