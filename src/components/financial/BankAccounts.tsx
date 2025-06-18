@@ -1,5 +1,5 @@
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -8,24 +8,94 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, Building2, DollarSign, Edit, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { bankAccountsService } from '@/services/supabaseService';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 const BankAccounts = () => {
   const { toast } = useToast();
-  const [accounts, setAccounts] = useState([
-    { id: 1, name: 'Conta Corrente Principal', bank: 'Banco do Brasil', balance: 5240.50 },
-    { id: 2, name: 'Conta Poupança', bank: 'Caixa Econômica', balance: 12560.00 },
-    { id: 3, name: 'Conta Salário', bank: 'Itaú', balance: 3200.00 },
-  ]);
-
+  const queryClient = useQueryClient();
+  
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAccount, setEditingAccount] = useState(null);
   const [formData, setFormData] = useState({
     name: '',
-    bank: '',
-    balance: ''
+    bank_name: '',
+    balance: '',
+    account_type: ''
   });
 
-  const handleSubmit = (e) => {
+  // Fetch bank accounts
+  const { data: accounts = [], isLoading } = useQuery({
+    queryKey: ['bankAccounts'],
+    queryFn: bankAccountsService.getAll,
+  });
+
+  // Create bank account mutation
+  const createMutation = useMutation({
+    mutationFn: bankAccountsService.create,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
+      toast({
+        title: "Sucesso",
+        description: "Conta criada com sucesso!"
+      });
+      setFormData({ name: '', bank_name: '', balance: '', account_type: '' });
+      setIsDialogOpen(false);
+    },
+    onError: (error) => {
+      console.error('Error creating bank account:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao criar conta. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Update bank account mutation
+  const updateMutation = useMutation({
+    mutationFn: ({ id, updates }) => bankAccountsService.update(id, updates),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
+      toast({
+        title: "Sucesso",
+        description: "Conta atualizada com sucesso!"
+      });
+      setFormData({ name: '', bank_name: '', balance: '', account_type: '' });
+      setEditingAccount(null);
+      setIsDialogOpen(false);
+    },
+    onError: (error) => {
+      console.error('Error updating bank account:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao atualizar conta. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  // Delete bank account mutation
+  const deleteMutation = useMutation({
+    mutationFn: bankAccountsService.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
+      toast({
+        title: "Sucesso",
+        description: "Conta removida com sucesso!"
+      });
+    },
+    onError: (error) => {
+      console.error('Error deleting bank account:', error);
+      toast({
+        title: "Erro",
+        description: "Erro ao remover conta. Tente novamente.",
+        variant: "destructive"
+      });
+    }
+  });
+
+  const handleSubmit = async (e) => {
     e.preventDefault();
     
     if (!formData.name.trim()) {
@@ -37,51 +107,49 @@ const BankAccounts = () => {
       return;
     }
 
-    const newAccount = {
-      id: editingAccount ? editingAccount.id : Date.now(),
+    const accountData = {
       name: formData.name,
-      bank: formData.bank,
-      balance: parseFloat(formData.balance) || 0
+      bank_name: formData.bank_name,
+      balance: parseFloat(formData.balance) || 0,
+      account_type: formData.account_type || 'Conta Corrente'
     };
 
     if (editingAccount) {
-      setAccounts(accounts.map(acc => acc.id === editingAccount.id ? newAccount : acc));
-      toast({
-        title: "Sucesso",
-        description: "Conta atualizada com sucesso!"
+      updateMutation.mutate({
+        id: editingAccount.id,
+        updates: accountData
       });
     } else {
-      setAccounts([...accounts, newAccount]);
-      toast({
-        title: "Sucesso",
-        description: "Conta criada com sucesso!"
-      });
+      createMutation.mutate(accountData);
     }
-
-    setFormData({ name: '', bank: '', balance: '' });
-    setEditingAccount(null);
-    setIsDialogOpen(false);
   };
 
   const handleEdit = (account) => {
     setEditingAccount(account);
     setFormData({
       name: account.name,
-      bank: account.bank,
-      balance: account.balance.toString()
+      bank_name: account.bank_name || '',
+      balance: account.balance?.toString() || '',
+      account_type: account.account_type || ''
     });
     setIsDialogOpen(true);
   };
 
   const handleDelete = (id) => {
-    setAccounts(accounts.filter(acc => acc.id !== id));
-    toast({
-      title: "Sucesso",
-      description: "Conta removida com sucesso!"
-    });
+    if (window.confirm('Tem certeza que deseja remover esta conta?')) {
+      deleteMutation.mutate(id);
+    }
   };
 
-  const totalBalance = accounts.reduce((sum, acc) => sum + acc.balance, 0);
+  const totalBalance = accounts.reduce((sum, acc) => sum + (parseFloat(acc.balance) || 0), 0);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="text-lg">Carregando contas...</div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -97,7 +165,7 @@ const BankAccounts = () => {
               className="bg-blue-600 hover:bg-blue-700"
               onClick={() => {
                 setEditingAccount(null);
-                setFormData({ name: '', bank: '', balance: '' });
+                setFormData({ name: '', bank_name: '', balance: '', account_type: '' });
               }}
             >
               <PlusCircle className="h-4 w-4 mr-2" />
@@ -125,12 +193,21 @@ const BankAccounts = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="bank">Banco</Label>
+                <Label htmlFor="bank_name">Banco</Label>
                 <Input
-                  id="bank"
-                  value={formData.bank}
-                  onChange={(e) => setFormData({...formData, bank: e.target.value})}
+                  id="bank_name"
+                  value={formData.bank_name}
+                  onChange={(e) => setFormData({...formData, bank_name: e.target.value})}
                   placeholder="Ex: Banco do Brasil"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="account_type">Tipo de Conta</Label>
+                <Input
+                  id="account_type"
+                  value={formData.account_type}
+                  onChange={(e) => setFormData({...formData, account_type: e.target.value})}
+                  placeholder="Ex: Conta Corrente, Poupança"
                 />
               </div>
               <div className="space-y-2">
@@ -145,8 +222,15 @@ const BankAccounts = () => {
                 />
               </div>
               <div className="flex gap-2 pt-4">
-                <Button type="submit" className="flex-1">
-                  {editingAccount ? 'Atualizar' : 'Criar Conta'}
+                <Button 
+                  type="submit" 
+                  className="flex-1"
+                  disabled={createMutation.isPending || updateMutation.isPending}
+                >
+                  {createMutation.isPending || updateMutation.isPending 
+                    ? 'Salvando...' 
+                    : editingAccount ? 'Atualizar' : 'Criar Conta'
+                  }
                 </Button>
                 <Button 
                   type="button" 
@@ -187,10 +271,15 @@ const BankAccounts = () => {
               <div className="flex justify-between items-start">
                 <div>
                   <CardTitle className="text-lg">{account.name}</CardTitle>
-                  {account.bank && (
+                  {account.bank_name && (
                     <CardDescription className="flex items-center mt-1">
                       <Building2 className="h-4 w-4 mr-1" />
-                      {account.bank}
+                      {account.bank_name}
+                    </CardDescription>
+                  )}
+                  {account.account_type && (
+                    <CardDescription className="mt-1">
+                      {account.account_type}
                     </CardDescription>
                   )}
                 </div>
@@ -208,6 +297,7 @@ const BankAccounts = () => {
                     variant="ghost"
                     onClick={() => handleDelete(account.id)}
                     className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                    disabled={deleteMutation.isPending}
                   >
                     <Trash2 className="h-4 w-4" />
                   </Button>
@@ -219,10 +309,10 @@ const BankAccounts = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Saldo Atual</span>
                   <Badge 
-                    variant={account.balance >= 0 ? "default" : "destructive"}
+                    variant={parseFloat(account.balance) >= 0 ? "default" : "destructive"}
                     className="text-base font-semibold px-3 py-1"
                   >
-                    R$ {account.balance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {parseFloat(account.balance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </Badge>
                 </div>
               </div>
