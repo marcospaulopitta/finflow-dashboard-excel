@@ -8,6 +8,7 @@ import { BrowserRouter, Routes, Route } from "react-router-dom";
 import Index from "./pages/Index";
 import Auth from "./pages/Auth";
 import NotFound from "./pages/NotFound";
+import { useAuth } from "@/hooks/useAuth";
 
 const queryClient = new QueryClient();
 
@@ -23,8 +24,6 @@ const LoadingScreen = () => (
 
 // Separate component for auth-dependent content
 const AuthenticatedApp = () => {
-  // Only import and use useAuth inside this component
-  const { useAuth } = require('@/hooks/useAuth');
   const { user, loading } = useAuth();
 
   if (loading) {
