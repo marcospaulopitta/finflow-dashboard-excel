@@ -9,7 +9,8 @@ import CreditCards from '@/components/financial/CreditCards';
 import Expenses from '@/components/financial/Expenses';
 import Incomes from '@/components/financial/Incomes';
 import Categories from '@/components/financial/Categories';
-import { PieChart, CreditCard, Banknote, TrendingDown, TrendingUp, Tags, BarChart3, LogOut } from 'lucide-react';
+import Reports from '@/components/financial/Reports';
+import { PieChart, CreditCard, Banknote, TrendingDown, TrendingUp, Tags, BarChart3, LogOut, FileText } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { toast } from "@/hooks/use-toast";
 
@@ -43,6 +44,7 @@ const Index = () => {
 
   const tabs = [
     { id: 'dashboard', label: 'Resumo Geral', icon: BarChart3, component: Dashboard },
+    { id: 'reports', label: 'Relatórios', icon: FileText, component: Reports },
     { id: 'accounts', label: 'Contas Bancárias', icon: PieChart, component: BankAccounts },
     { id: 'cards', label: 'Cartões de Crédito', icon: CreditCard, component: CreditCards },
     { id: 'expenses', label: 'Despesas', icon: TrendingDown, component: Expenses },
@@ -78,7 +80,7 @@ const Index = () => {
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               {/* Tab Navigation */}
-              <TabsList className="grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6 bg-gray-50/50 p-2 rounded-t-lg">
+              <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 lg:grid-cols-7 bg-gray-50/50 p-2 rounded-t-lg">
                 {tabs.map((tab) => {
                   const IconComponent = tab.icon;
                   return (

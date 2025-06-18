@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -17,6 +18,9 @@ const Incomes = () => {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingIncome, setEditingIncome] = useState<any>(null);
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  
   const [formData, setFormData] = useState({
     description: '',
     amount: '',
@@ -45,6 +49,13 @@ const Incomes = () => {
 
   const recurrenceOptions = ['Única', 'Semanal', 'Quinzenal', 'Mensal', 'Anual'];
 
+  // Filter incomes by selected month/year
+  const filteredIncomes = incomes.filter(income => {
+    const incomeDate = new Date(income.due_date);
+    return incomeDate.getMonth() === selectedMonth && 
+           incomeDate.getFullYear() === selectedYear;
+  });
+
   // Mutations
   const createMutation = useMutation({
     mutationFn: incomesService.create,
@@ -54,15 +65,7 @@ const Incomes = () => {
         title: "Sucesso",
         description: "Receita criada com sucesso!"
       });
-      setFormData({ 
-        description: '', 
-        amount: '', 
-        due_date: '', 
-        account_id: '', 
-        category_id: '', 
-        recurrence: 'Única', 
-        notes: '' 
-      });
+      resetForm();
       setIsDialogOpen(false);
     },
     onError: (error: any) => {
@@ -83,15 +86,7 @@ const Incomes = () => {
         title: "Sucesso",
         description: "Receita atualizada com sucesso!"
       });
-      setFormData({ 
-        description: '', 
-        amount: '', 
-        due_date: '', 
-        account_id: '', 
-        category_id: '', 
-        recurrence: 'Única', 
-        notes: '' 
-      });
+      resetForm();
       setEditingIncome(null);
       setIsDialogOpen(false);
     },
@@ -122,13 +117,25 @@ const Incomes = () => {
     }
   });
 
+  const resetForm = () => {
+    setFormData({ 
+      description: '', 
+      amount: '', 
+      due_date: '', 
+      account_id: '', 
+      category_id: '', 
+      recurrence: 'Única', 
+      notes: '' 
+    });
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.description.trim() || !formData.amount || !formData.due_date) {
       toast({
         title: "Erro",
-        description: "Descrição, valor e data de vencimento são obrigatórios",
+        description: "Descrição, valor e data de recebimento são obrigatórios",
         variant: "destructive"
       });
       return;
@@ -169,13 +176,7 @@ const Incomes = () => {
     deleteMutation.mutate(id);
   };
 
-  const totalIncomes = incomes.reduce((sum, inc) => sum + Number(inc.amount), 0);
-  const thisMonthIncomes = incomes.filter(inc => {
-    const incomeDate = new Date(inc.due_date);
-    const currentDate = new Date();
-    return incomeDate.getMonth() === currentDate.getMonth() && 
-           incomeDate.getFullYear() === currentDate.getFullYear();
-  }).reduce((sum, inc) => sum + Number(inc.amount), 0);
+  const totalIncomes = filteredIncomes.reduce((sum, inc) => sum + Number(inc.amount), 0);
 
   const getRecurrenceColor = (recurrence: string) => {
     switch (recurrence) {
@@ -198,6 +199,16 @@ const Incomes = () => {
     return category ? category.name : '';
   };
 
+  const months = [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ];
+
+  const years = Array.from({ length: 10 }, (_, i) => {
+    const year = new Date().getFullYear() - 5 + i;
+    return year;
+  });
+
   if (incomesLoading) {
     return (
       <div className="flex items-center justify-center p-8">
@@ -214,184 +225,187 @@ const Incomes = () => {
           <p className="text-gray-600">Gerencie suas receitas e ganhos</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button 
-              className="bg-green-600 hover:bg-green-700"
-              onClick={() => {
-                setEditingIncome(null);
-                setFormData({ 
-                  description: '', 
-                  amount: '', 
-                  due_date: '', 
-                  account_id: '', 
-                  category_id: '', 
-                  recurrence: 'Única', 
-                  notes: '' 
-                });
-              }}
-            >
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Nova Receita
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[500px]">
-            <DialogHeader>
-              <DialogTitle>
-                {editingIncome ? 'Editar Receita' : 'Nova Receita'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingIncome ? 'Atualize os dados da receita.' : 'Cadastre uma nova receita.'}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
-              <div className="space-y-2">
-                <Label htmlFor="description">Descrição *</Label>
-                <Input
-                  id="description"
-                  value={formData.description}
-                  onChange={(e) => setFormData({...formData, description: e.target.value})}
-                  placeholder="Ex: Salário Empresa XYZ"
-                  required
-                />
-              </div>
-              
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="amount">Valor (R$) *</Label>
-                  <Input
-                    id="amount"
-                    type="number"
-                    step="0.01"
-                    value={formData.amount}
-                    onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                    placeholder="0.00"
-                    required
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="due_date">Data de Recebimento *</Label>
-                  <Input
-                    id="due_date"
-                    type="date"
-                    value={formData.due_date}
-                    onChange={(e) => setFormData({...formData, due_date: e.target.value})}
-                    required
-                  />
-                </div>
-              </div>
+        <div className="flex gap-2 items-center">
+          {/* Month/Year Selector */}
+          <Select value={selectedMonth.toString()} onValueChange={(value) => setSelectedMonth(parseInt(value))}>
+            <SelectTrigger className="w-[140px]">
+              <Calendar className="h-4 w-4 mr-2" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {months.map((month, index) => (
+                <SelectItem key={index} value={index.toString()}>
+                  {month}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
 
-              <div className="grid grid-cols-2 gap-4">
+          <Select value={selectedYear.toString()} onValueChange={(value) => setSelectedYear(parseInt(value))}>
+            <SelectTrigger className="w-[100px]">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              {years.map((year) => (
+                <SelectItem key={year} value={year.toString()}>
+                  {year}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+          
+          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <DialogTrigger asChild>
+              <Button 
+                className="bg-green-600 hover:bg-green-700"
+                onClick={() => {
+                  setEditingIncome(null);
+                  resetForm();
+                }}
+              >
+                <PlusCircle className="h-4 w-4 mr-2" />
+                Nova Receita
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-[500px]">
+              <DialogHeader>
+                <DialogTitle>
+                  {editingIncome ? 'Editar Receita' : 'Nova Receita'}
+                </DialogTitle>
+                <DialogDescription>
+                  {editingIncome ? 'Atualize os dados da receita.' : 'Cadastre uma nova receita.'}
+                </DialogDescription>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
                 <div className="space-y-2">
-                  <Label htmlFor="account_id">Conta</Label>
-                  <Select value={formData.account_id} onValueChange={(value) => setFormData({...formData, account_id: value})}>
+                  <Label htmlFor="description">Descrição *</Label>
+                  <Input
+                    id="description"
+                    value={formData.description}
+                    onChange={(e) => setFormData({...formData, description: e.target.value})}
+                    placeholder="Ex: Salário Empresa XYZ"
+                    required
+                  />
+                </div>
+                
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="amount">Valor (R$) *</Label>
+                    <Input
+                      id="amount"
+                      type="number"
+                      step="0.01"
+                      value={formData.amount}
+                      onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                      placeholder="0.00"
+                      required
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="due_date">Data de Recebimento *</Label>
+                    <Input
+                      id="due_date"
+                      type="date"
+                      value={formData.due_date}
+                      onChange={(e) => setFormData({...formData, due_date: e.target.value})}
+                      required
+                    />
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label htmlFor="account_id">Conta</Label>
+                    <Select value={formData.account_id} onValueChange={(value) => setFormData({...formData, account_id: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecionar conta" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {accounts.map((account) => (
+                          <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label htmlFor="category_id">Categoria</Label>
+                    <Select value={formData.category_id} onValueChange={(value) => setFormData({...formData, category_id: value})}>
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecionar categoria" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {categories.map((category) => (
+                          <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="recurrence">Tipo de Recorrência</Label>
+                  <Select value={formData.recurrence} onValueChange={(value) => setFormData({...formData, recurrence: value})}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Selecionar conta" />
+                      <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      {accounts.map((account) => (
-                        <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
+                      {recurrenceOptions.map((option) => (
+                        <SelectItem key={option} value={option}>{option}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
                 </div>
+
                 <div className="space-y-2">
-                  <Label htmlFor="category_id">Categoria</Label>
-                  <Select value={formData.category_id} onValueChange={(value) => setFormData({...formData, category_id: value})}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Selecionar categoria" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {categories.map((category) => (
-                        <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <Label htmlFor="notes">Observações</Label>
+                  <Textarea
+                    id="notes"
+                    value={formData.notes}
+                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
+                    placeholder="Observações adicionais (opcional)"
+                    rows={3}
+                  />
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="recurrence">Tipo de Recorrência</Label>
-                <Select value={formData.recurrence} onValueChange={(value) => setFormData({...formData, recurrence: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {recurrenceOptions.map((option) => (
-                      <SelectItem key={option} value={option}>{option}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-
-              <div className="space-y-2">
-                <Label htmlFor="notes">Observações</Label>
-                <Textarea
-                  id="notes"
-                  value={formData.notes}
-                  onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                  placeholder="Observações adicionais (opcional)"
-                  rows={3}
-                />
-              </div>
-
-              <div className="flex gap-2 pt-4">
-                <Button type="submit" className="flex-1" disabled={createMutation.isPending || updateMutation.isPending}>
-                  {editingIncome ? 'Atualizar' : 'Criar Receita'}
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setIsDialogOpen(false)}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+                <div className="flex gap-2 pt-4">
+                  <Button type="submit" className="flex-1" disabled={createMutation.isPending || updateMutation.isPending}>
+                    {editingIncome ? 'Atualizar' : 'Criar Receita'}
+                  </Button>
+                  <Button 
+                    type="button" 
+                    variant="outline" 
+                    onClick={() => setIsDialogOpen(false)}
+                  >
+                    Cancelar
+                  </Button>
+                </div>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      {/* Summary Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <Card className="border-0 shadow-lg bg-gradient-to-r from-green-500 to-green-600 text-white">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-green-100">Total de Receitas</p>
-                <p className="text-3xl font-bold">
-                  R$ {totalIncomes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </p>
-                <p className="text-green-100 mt-1">{incomes.length} receita(s)</p>
-              </div>
-              <div className="bg-white/20 p-3 rounded-full">
-                <TrendingUp className="h-8 w-8" />
-              </div>
+      {/* Total Summary */}
+      <Card className="border-0 shadow-lg bg-gradient-to-r from-green-500 to-green-600 text-white">
+        <CardContent className="p-6">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="text-green-100">Total de Receitas - {months[selectedMonth]} {selectedYear}</p>
+              <p className="text-3xl font-bold">
+                R$ {totalIncomes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+              </p>
+              <p className="text-green-100 mt-1">{filteredIncomes.length} receita(s)</p>
             </div>
-          </CardContent>
-        </Card>
-
-        <Card className="border-0 shadow-lg bg-gradient-to-r from-blue-500 to-blue-600 text-white">
-          <CardContent className="p-6">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-blue-100">Receitas do Mês</p>
-                <p className="text-3xl font-bold">
-                  R$ {thisMonthIncomes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </p>
-                <p className="text-blue-100 mt-1">{new Date().toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}</p>
-              </div>
-              <div className="bg-white/20 p-3 rounded-full">
-                <Calendar className="h-8 w-8" />
-              </div>
+            <div className="bg-white/20 p-3 rounded-full">
+              <TrendingUp className="h-8 w-8" />
             </div>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Incomes List */}
       <div className="space-y-4">
-        {incomes.map((income) => (
+        {filteredIncomes.map((income) => (
           <Card key={income.id} className="border-0 shadow-lg hover:shadow-xl transition-shadow duration-300">
             <CardContent className="p-6">
               <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
@@ -458,19 +472,19 @@ const Incomes = () => {
         ))}
       </div>
 
-      {incomes.length === 0 && (
+      {filteredIncomes.length === 0 && (
         <Card className="border-0 shadow-lg">
           <CardContent className="p-12 text-center">
             <TrendingUp className="h-12 w-12 mx-auto text-gray-400 mb-4" />
             <h3 className="text-lg font-semibold text-gray-900 mb-2">
-              Nenhuma receita cadastrada
+              Nenhuma receita encontrada
             </h3>
             <p className="text-gray-600 mb-4">
-              Comece cadastrando sua primeira receita para controlar melhor seus ganhos.
+              Não há receitas cadastradas para {months[selectedMonth]} de {selectedYear}.
             </p>
             <Button onClick={() => setIsDialogOpen(true)}>
               <PlusCircle className="h-4 w-4 mr-2" />
-              Cadastrar Primeira Receita
+              Cadastrar Receita
             </Button>
           </CardContent>
         </Card>
