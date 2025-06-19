@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -16,7 +15,7 @@ const BankAccounts = () => {
   const queryClient = useQueryClient();
   
   const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [editingAccount, setEditingAccount] = useState(null);
+  const [editingAccount, setEditingAccount] = useState<any>(null);
   const [formData, setFormData] = useState({
     name: '',
     bank_name: '',
@@ -54,7 +53,7 @@ const BankAccounts = () => {
 
   // Update bank account mutation
   const updateMutation = useMutation({
-    mutationFn: ({ id, updates }) => bankAccountsService.update(id, updates),
+    mutationFn: ({ id, updates }: { id: string; updates: any }) => bankAccountsService.update(id, updates),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['bankAccounts'] });
       toast({
@@ -95,7 +94,7 @@ const BankAccounts = () => {
     }
   });
 
-  const handleSubmit = async (e) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.name.trim()) {
@@ -124,7 +123,7 @@ const BankAccounts = () => {
     }
   };
 
-  const handleEdit = (account) => {
+  const handleEdit = (account: any) => {
     setEditingAccount(account);
     setFormData({
       name: account.name,
@@ -135,7 +134,7 @@ const BankAccounts = () => {
     setIsDialogOpen(true);
   };
 
-  const handleDelete = (id) => {
+  const handleDelete = (id: string) => {
     if (window.confirm('Tem certeza que deseja remover esta conta?')) {
       deleteMutation.mutate(id);
     }
