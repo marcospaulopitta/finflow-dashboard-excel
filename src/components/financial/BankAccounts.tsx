@@ -1,14 +1,23 @@
+
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, Building2, DollarSign, Edit, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { bankAccountsService } from '@/services/supabaseService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+// Account type mappings
+const ACCOUNT_TYPES = {
+  1: 'Conta Corrente',
+  2: 'Conta Salário',
+  3: 'Poupança'
+};
 
 const BankAccounts = () => {
   const { toast } = useToast();
@@ -20,7 +29,7 @@ const BankAccounts = () => {
     name: '',
     bank_name: '',
     balance: '',
-    account_type: ''
+    account_type: 1
   });
 
   // Fetch bank accounts
@@ -38,7 +47,7 @@ const BankAccounts = () => {
         title: "Sucesso",
         description: "Conta criada com sucesso!"
       });
-      setFormData({ name: '', bank_name: '', balance: '', account_type: '' });
+      setFormData({ name: '', bank_name: '', balance: '', account_type: 1 });
       setIsDialogOpen(false);
     },
     onError: (error) => {
@@ -60,7 +69,7 @@ const BankAccounts = () => {
         title: "Sucesso",
         description: "Conta atualizada com sucesso!"
       });
-      setFormData({ name: '', bank_name: '', balance: '', account_type: '' });
+      setFormData({ name: '', bank_name: '', balance: '', account_type: 1 });
       setEditingAccount(null);
       setIsDialogOpen(false);
     },
@@ -110,7 +119,7 @@ const BankAccounts = () => {
       name: formData.name,
       bank_name: formData.bank_name,
       balance: parseFloat(formData.balance) || 0,
-      account_type: formData.account_type || 'Conta Corrente'
+      account_type: formData.account_type
     };
 
     if (editingAccount) {
@@ -129,7 +138,7 @@ const BankAccounts = () => {
       name: account.name,
       bank_name: account.bank_name || '',
       balance: account.balance?.toString() || '',
-      account_type: account.account_type || ''
+      account_type: account.account_type || 1
     });
     setIsDialogOpen(true);
   };
@@ -164,7 +173,7 @@ const BankAccounts = () => {
               className="bg-blue-600 hover:bg-blue-700"
               onClick={() => {
                 setEditingAccount(null);
-                setFormData({ name: '', bank_name: '', balance: '', account_type: '' });
+                setFormData({ name: '', bank_name: '', balance: '', account_type: 1 });
               }}
             >
               <PlusCircle className="h-4 w-4 mr-2" />
@@ -202,12 +211,19 @@ const BankAccounts = () => {
               </div>
               <div className="space-y-2">
                 <Label htmlFor="account_type">Tipo de Conta</Label>
-                <Input
-                  id="account_type"
-                  value={formData.account_type}
-                  onChange={(e) => setFormData({...formData, account_type: e.target.value})}
-                  placeholder="Ex: Conta Corrente, Poupança"
-                />
+                <Select 
+                  value={formData.account_type.toString()} 
+                  onValueChange={(value) => setFormData({...formData, account_type: parseInt(value)})}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o tipo de conta" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="1">Conta Corrente</SelectItem>
+                    <SelectItem value="2">Conta Salário</SelectItem>
+                    <SelectItem value="3">Poupança</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
               <div className="space-y-2">
                 <Label htmlFor="balance">Saldo Atual (R$)</Label>
@@ -276,11 +292,9 @@ const BankAccounts = () => {
                       {account.bank_name}
                     </CardDescription>
                   )}
-                  {account.account_type && (
-                    <CardDescription className="mt-1">
-                      {account.account_type}
-                    </CardDescription>
-                  )}
+                  <CardDescription className="mt-1">
+                    {ACCOUNT_TYPES[account.account_type as keyof typeof ACCOUNT_TYPES] || 'Conta Corrente'}
+                  </CardDescription>
                 </div>
                 <div className="flex gap-1">
                   <Button
