@@ -369,6 +369,7 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
                     {creditCards.map((card) => (
                       <SelectItem key={card.id} value={card.id}>
                         {card.name} - {card.bank_name}
+                        {card.card_brands && ` (${card.card_brands.display_name})`}
                       </SelectItem>
                     ))}
                   </SelectContent>

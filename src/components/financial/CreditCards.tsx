@@ -2,109 +2,59 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, CreditCard, Calendar, DollarSign, Edit, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
+import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
+import { creditCardsService } from "@/services/supabaseService";
+import CreditCardForm from "./forms/CreditCardForm";
 
 const CreditCards = () => {
   const { toast } = useToast();
-  const [cards, setCards] = useState([
-    { 
-      id: 1, 
-      name: 'Visa Gold', 
-      brand: 'Visa', 
-      limit: 5000, 
-      closingDay: 15, 
-      dueDay: 10,
-      currentSpent: 1280.50
-    },
-    { 
-      id: 2, 
-      name: 'Mastercard Black', 
-      brand: 'Mastercard', 
-      limit: 10000, 
-      closingDay: 20, 
-      dueDay: 5,
-      currentSpent: 2450.00
-    },
-  ]);
-
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCard, setEditingCard] = useState(null);
-  const [formData, setFormData] = useState({
-    name: '',
-    brand: '',
-    limit: '',
-    closingDay: '',
-    dueDay: ''
+  
+  const queryClient = useQueryClient();
+
+  const { data: cards = [], isLoading } = useQuery({
+    queryKey: ['credit_cards'],
+    queryFn: creditCardsService.getAll
   });
 
-  const handleSubmit = (e) => {
-    e.preventDefault();
-    
-    if (!formData.name.trim()) {
+  const deleteCardMutation = useMutation({
+    mutationFn: creditCardsService.delete,
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['credit_cards'] });
+      toast({
+        title: "Sucesso",
+        description: "Cartão removido com sucesso!"
+      });
+    },
+    onError: (error: any) => {
       toast({
         title: "Erro",
-        description: "Nome do cartão é obrigatório",
+        description: "Erro ao remover cartão: " + error.message,
         variant: "destructive"
       });
-      return;
     }
-
-    const newCard = {
-      id: editingCard ? editingCard.id : Date.now(),
-      name: formData.name,
-      brand: formData.brand,
-      limit: parseFloat(formData.limit) || 0,
-      closingDay: parseInt(formData.closingDay) || null,
-      dueDay: parseInt(formData.dueDay) || null,
-      currentSpent: editingCard ? editingCard.currentSpent : 0
-    };
-
-    if (editingCard) {
-      setCards(cards.map(card => card.id === editingCard.id ? newCard : card));
-      toast({
-        title: "Sucesso",
-        description: "Cartão atualizado com sucesso!"
-      });
-    } else {
-      setCards([...cards, newCard]);
-      toast({
-        title: "Sucesso",
-        description: "Cartão criado com sucesso!"
-      });
-    }
-
-    setFormData({ name: '', brand: '', limit: '', closingDay: '', dueDay: '' });
-    setEditingCard(null);
-    setIsDialogOpen(false);
-  };
+  });
 
   const handleEdit = (card) => {
     setEditingCard(card);
-    setFormData({
-      name: card.name,
-      brand: card.brand,
-      limit: card.limit.toString(),
-      closingDay: card.closingDay?.toString() || '',
-      dueDay: card.dueDay?.toString() || ''
-    });
     setIsDialogOpen(true);
   };
 
   const handleDelete = (id) => {
-    setCards(cards.filter(card => card.id !== id));
-    toast({
-      title: "Sucesso",
-      description: "Cartão removido com sucesso!"
-    });
+    deleteCardMutation.mutate(id);
   };
 
-  const totalLimit = cards.reduce((sum, card) => sum + card.limit, 0);
-  const totalSpent = cards.reduce((sum, card) => sum + card.currentSpent, 0);
+  const handleNewCard = () => {
+    setEditingCard(null);
+    setIsDialogOpen(true);
+  };
+
+  const totalLimit = cards.reduce((sum, card) => sum + (card.limit_amount || 0), 0);
+  const totalSpent = cards.reduce((sum, card) => sum + (card.current_balance || 0), 0);
   const availableLimit = totalLimit - totalSpent;
 
   const getUsagePercentage = (spent, limit) => {
@@ -118,6 +68,14 @@ const CreditCards = () => {
     return 'bg-green-500';
   };
 
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center h-64">
+        <div className="text-gray-500">Carregando cartões...</div>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
@@ -126,100 +84,13 @@ const CreditCards = () => {
           <p className="text-gray-600">Gerencie seus cartões de crédito</p>
         </div>
         
-        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-          <DialogTrigger asChild>
-            <Button 
-              className="bg-purple-600 hover:bg-purple-700"
-              onClick={() => {
-                setEditingCard(null);
-                setFormData({ name: '', brand: '', limit: '', closingDay: '', dueDay: '' });
-              }}
-            >
-              <PlusCircle className="h-4 w-4 mr-2" />
-              Novo Cartão
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="sm:max-w-[425px]">
-            <DialogHeader>
-              <DialogTitle>
-                {editingCard ? 'Editar Cartão' : 'Novo Cartão de Crédito'}
-              </DialogTitle>
-              <DialogDescription>
-                {editingCard ? 'Atualize os dados do cartão.' : 'Cadastre um novo cartão de crédito.'}
-              </DialogDescription>
-            </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="name">Nome do Cartão *</Label>
-                <Input
-                  id="name"
-                  value={formData.name}
-                  onChange={(e) => setFormData({...formData, name: e.target.value})}
-                  placeholder="Ex: Visa Gold"
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="brand">Bandeira</Label>
-                <Input
-                  id="brand"
-                  value={formData.brand}
-                  onChange={(e) => setFormData({...formData, brand: e.target.value})}
-                  placeholder="Ex: Visa, Mastercard, Elo"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="limit">Limite (R$)</Label>
-                <Input
-                  id="limit"
-                  type="number"
-                  step="0.01"
-                  value={formData.limit}
-                  onChange={(e) => setFormData({...formData, limit: e.target.value})}
-                  placeholder="0.00"
-                />
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label htmlFor="closingDay">Dia Fechamento</Label>
-                  <Input
-                    id="closingDay"
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={formData.closingDay}
-                    onChange={(e) => setFormData({...formData, closingDay: e.target.value})}
-                    placeholder="15"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="dueDay">Dia Vencimento</Label>
-                  <Input
-                    id="dueDay"
-                    type="number"
-                    min="1"
-                    max="31"
-                    value={formData.dueDay}
-                    onChange={(e) => setFormData({...formData, dueDay: e.target.value})}
-                    placeholder="10"
-                  />
-                </div>
-              </div>
-              <div className="flex gap-2 pt-4">
-                <Button type="submit" className="flex-1">
-                  {editingCard ? 'Atualizar' : 'Criar Cartão'}
-                </Button>
-                <Button 
-                  type="button" 
-                  variant="outline" 
-                  onClick={() => setIsDialogOpen(false)}
-                >
-                  Cancelar
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+        <Button 
+          className="bg-purple-600 hover:bg-purple-700"
+          onClick={handleNewCard}
+        >
+          <PlusCircle className="h-4 w-4 mr-2" />
+          Novo Cartão
+        </Button>
       </div>
 
       {/* Summary Cards */}
@@ -270,7 +141,7 @@ const CreditCards = () => {
       {/* Cards List */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         {cards.map((card) => {
-          const usagePercentage = getUsagePercentage(card.currentSpent, card.limit);
+          const usagePercentage = getUsagePercentage(card.current_balance || 0, card.limit_amount || 0);
           const usageColor = getUsageColor(usagePercentage);
           
           return (
@@ -282,11 +153,14 @@ const CreditCards = () => {
                       <CreditCard className="h-5 w-5" />
                       {card.name}
                     </CardTitle>
-                    {card.brand && (
-                      <CardDescription className="mt-1">
-                        {card.brand}
-                      </CardDescription>
-                    )}
+                    <CardDescription className="mt-1">
+                      {card.bank_name}
+                      {card.card_brands && (
+                        <span className="ml-2 text-sm font-medium">
+                          • {card.card_brands.display_name}
+                        </span>
+                      )}
+                    </CardDescription>
                   </div>
                   <div className="flex gap-1">
                     <Button
@@ -302,6 +176,7 @@ const CreditCards = () => {
                       variant="ghost"
                       onClick={() => handleDelete(card.id)}
                       className="h-8 w-8 p-0 text-red-500 hover:text-red-700"
+                      disabled={deleteCardMutation.isPending}
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
@@ -313,8 +188,8 @@ const CreditCards = () => {
                   <div className="flex justify-between text-sm">
                     <span>Limite Utilizado</span>
                     <span className="font-medium">
-                      R$ {card.currentSpent.toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / 
-                      R$ {card.limit.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                      R$ {(card.current_balance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })} / 
+                      R$ {(card.limit_amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                     </span>
                   </div>
                   <div className="w-full bg-gray-200 rounded-full h-2">
@@ -329,21 +204,12 @@ const CreditCards = () => {
                 </div>
 
                 <div className="grid grid-cols-2 gap-4 text-sm">
-                  {card.closingDay && (
-                    <div className="flex items-center gap-2">
-                      <Calendar className="h-4 w-4 text-gray-400" />
-                      <div>
-                        <p className="text-gray-600">Fechamento</p>
-                        <p className="font-medium">Dia {card.closingDay}</p>
-                      </div>
-                    </div>
-                  )}
-                  {card.dueDay && (
+                  {card.due_date && (
                     <div className="flex items-center gap-2">
                       <Calendar className="h-4 w-4 text-gray-400" />
                       <div>
                         <p className="text-gray-600">Vencimento</p>
-                        <p className="font-medium">Dia {card.dueDay}</p>
+                        <p className="font-medium">Dia {card.due_date}</p>
                       </div>
                     </div>
                   )}
@@ -351,10 +217,10 @@ const CreditCards = () => {
 
                 <div className="pt-2">
                   <Badge 
-                    variant={card.limit - card.currentSpent >= 0 ? "default" : "destructive"}
+                    variant={(card.limit_amount || 0) - (card.current_balance || 0) >= 0 ? "default" : "destructive"}
                     className="text-sm"
                   >
-                    Disponível: R$ {(card.limit - card.currentSpent).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    Disponível: R$ {((card.limit_amount || 0) - (card.current_balance || 0)).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </Badge>
                 </div>
               </CardContent>
@@ -373,13 +239,19 @@ const CreditCards = () => {
             <p className="text-gray-600 mb-4">
               Comece cadastrando seu primeiro cartão de crédito para controlar melhor seus gastos.
             </p>
-            <Button onClick={() => setIsDialogOpen(true)}>
+            <Button onClick={handleNewCard}>
               <PlusCircle className="h-4 w-4 mr-2" />
               Cadastrar Primeiro Cartão
             </Button>
           </CardContent>
         </Card>
       )}
+
+      <CreditCardForm 
+        open={isDialogOpen}
+        onOpenChange={setIsDialogOpen}
+        editingCard={editingCard}
+      />
     </div>
   );
 };

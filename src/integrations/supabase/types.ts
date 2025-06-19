@@ -42,6 +42,27 @@ export type Database = {
         }
         Relationships: []
       }
+      card_brands: {
+        Row: {
+          created_at: string
+          display_name: string
+          id: number
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          display_name: string
+          id: number
+          name: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string
+          id?: number
+          name?: string
+        }
+        Relationships: []
+      }
       categories: {
         Row: {
           color: string | null
@@ -72,6 +93,7 @@ export type Database = {
       credit_cards: {
         Row: {
           bank_name: string
+          brand_id: number | null
           created_at: string
           current_balance: number | null
           due_date: number
@@ -83,6 +105,7 @@ export type Database = {
         }
         Insert: {
           bank_name: string
+          brand_id?: number | null
           created_at?: string
           current_balance?: number | null
           due_date: number
@@ -94,6 +117,7 @@ export type Database = {
         }
         Update: {
           bank_name?: string
+          brand_id?: number | null
           created_at?: string
           current_balance?: number | null
           due_date?: number
@@ -103,7 +127,15 @@ export type Database = {
           updated_at?: string
           user_id?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "credit_cards_brand_id_fkey"
+            columns: ["brand_id"]
+            isOneToOne: false
+            referencedRelation: "card_brands"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       expenses: {
         Row: {

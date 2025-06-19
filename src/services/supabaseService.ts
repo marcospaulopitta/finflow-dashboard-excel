@@ -49,12 +49,32 @@ export const bankAccountsService = {
   }
 };
 
+// Card Brands Service
+export const cardBrandsService = {
+  async getAll() {
+    const { data, error } = await supabase
+      .from('card_brands')
+      .select('*')
+      .order('display_name', { ascending: true });
+    
+    if (error) throw error;
+    return data || [];
+  }
+};
+
 // Credit Cards Service
 export const creditCardsService = {
   async getAll() {
     const { data, error } = await supabase
       .from('credit_cards')
-      .select('*')
+      .select(`
+        *,
+        card_brands!credit_cards_brand_id_fkey (
+          id,
+          name,
+          display_name
+        )
+      `)
       .order('created_at', { ascending: false });
     
     if (error) throw error;
@@ -68,7 +88,14 @@ export const creditCardsService = {
     const { data, error } = await supabase
       .from('credit_cards')
       .insert([{ ...cardData, user_id: user.id }])
-      .select()
+      .select(`
+        *,
+        card_brands!credit_cards_brand_id_fkey (
+          id,
+          name,
+          display_name
+        )
+      `)
       .single();
     
     if (error) throw error;
@@ -80,7 +107,14 @@ export const creditCardsService = {
       .from('credit_cards')
       .update(updates)
       .eq('id', id)
-      .select()
+      .select(`
+        *,
+        card_brands!credit_cards_brand_id_fkey (
+          id,
+          name,
+          display_name
+        )
+      `)
       .single();
     
     if (error) throw error;
