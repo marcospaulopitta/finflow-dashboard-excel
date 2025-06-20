@@ -1,3 +1,4 @@
+
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -89,9 +90,28 @@ const Dashboard = () => {
     .filter(expense => expense.is_paid)
     .reduce((sum, expense) => sum + Number(expense.amount), 0);
 
-  // Calculate total balance: Bank accounts + Current month incomes
-  const bankAccountsBalance = accounts.reduce((sum, acc) => sum + (Number(acc.balance) || 0), 0);
-  const currentBalance = bankAccountsBalance + totalIncomes;
+  // Calculate adjusted bank account balances with income values added
+  const adjustedAccountsBalance = useMemo(() => {
+    const baseBalance = accounts.reduce((sum, acc) => sum + (Number(acc.balance) || 0), 0);
+    
+    // Add income values to their respective accounts
+    const incomesByAccount = currentMonthIncomes.reduce((acc, income) => {
+      if (income.account_id) {
+        acc[income.account_id] = (acc[income.account_id] || 0) + Number(income.amount);
+      }
+      return acc;
+    }, {} as Record<string, number>);
+
+    // Calculate total income allocated to accounts
+    const allocatedIncome = Object.values(incomesByAccount).reduce((sum, amount) => sum + amount, 0);
+    
+    // Add non-allocated income (incomes without account_id) to base balance
+    const nonAllocatedIncome = totalIncomes - allocatedIncome;
+    
+    return baseBalance + totalIncomes;
+  }, [accounts, currentMonthIncomes, totalIncomes]);
+
+  const currentBalance = adjustedAccountsBalance;
 
   // Generate chart data for different periods
   const generateChartData = () => {
@@ -430,6 +450,11 @@ const Dashboard = () => {
                         <p className="font-medium">{income.description}</p>
                         <p className="text-sm text-gray-600">
                           {new Date(income.due_date).toLocaleDateString('pt-BR')}
+                          {income.account_id && (
+                            <span className="ml-2 text-blue-600">
+                              • {accounts.find(acc => acc.id === income.account_id)?.name || 'Conta'}
+                            </span>
+                          )}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
