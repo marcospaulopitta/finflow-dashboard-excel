@@ -149,7 +149,7 @@ const BankAccounts = () => {
     }
   };
 
-  const totalBalance = accounts.reduce((sum, acc) => sum + (parseFloat(acc.balance) || 0), 0);
+  const totalBalance = accounts.reduce((sum, acc) => sum + (Number(acc.balance) || 0), 0);
 
   if (isLoading) {
     return (
@@ -322,10 +322,10 @@ const BankAccounts = () => {
                 <div className="flex justify-between items-center">
                   <span className="text-sm text-gray-600">Saldo Atual</span>
                   <Badge 
-                    variant={parseFloat(account.balance) >= 0 ? "default" : "destructive"}
+                    variant={Number(account.balance) >= 0 ? "default" : "destructive"}
                     className="text-base font-semibold px-3 py-1"
                   >
-                    R$ {parseFloat(account.balance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    R$ {Number(account.balance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                   </Badge>
                 </div>
               </div>
