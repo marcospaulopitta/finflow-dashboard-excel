@@ -55,17 +55,20 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
   const createIncomeMutation = useMutation({
     mutationFn: incomesService.create,
     onSuccess: () => {
+      // Invalidate all related queries to ensure data consistency
       queryClient.invalidateQueries({ queryKey: ['incomes'] });
+      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
       toast({
         title: "Receita criada",
-        description: "A receita foi adicionada com sucesso!"
+        description: "A receita foi adicionada com sucesso e o saldo da conta foi atualizado!"
       });
       handleClose();
     },
     onError: (error) => {
+      console.error('Erro ao criar receita:', error);
       toast({
         title: "Erro",
-        description: "Erro ao criar receita. Tente novamente.",
+        description: "Erro ao criar receita. Verifique os dados e tente novamente.",
         variant: "destructive"
       });
     }
@@ -75,17 +78,20 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
     mutationFn: ({ id, updates }: { id: string, updates: any }) => 
       incomesService.update(id, updates),
     onSuccess: () => {
+      // Invalidate all related queries to ensure data consistency
       queryClient.invalidateQueries({ queryKey: ['incomes'] });
+      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
       toast({
         title: "Receita atualizada",
-        description: "A receita foi atualizada com sucesso!"
+        description: "A receita foi atualizada com sucesso e o saldo da conta foi recalculado!"
       });
       handleClose();
     },
     onError: (error) => {
+      console.error('Erro ao atualizar receita:', error);
       toast({
         title: "Erro",
-        description: "Erro ao atualizar receita. Tente novamente.",
+        description: "Erro ao atualizar receita. Verifique os dados e tente novamente.",
         variant: "destructive"
       });
     }
@@ -104,9 +110,10 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
       });
     },
     onError: (error: any) => {
+      console.error('Erro ao criar categoria:', error);
       toast({
         title: "Erro",
-        description: "Erro ao criar categoria: " + error.message,
+        description: "Erro ao criar categoria. Tente novamente.",
         variant: "destructive"
       });
     }
@@ -115,9 +122,9 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
   useEffect(() => {
     if (editingIncome) {
       setFormData({
-        description: editingIncome.description,
-        amount: editingIncome.amount.toString(),
-        due_date: new Date(editingIncome.due_date),
+        description: editingIncome.description || '',
+        amount: editingIncome.amount?.toString() || '',
+        due_date: editingIncome.due_date ? new Date(editingIncome.due_date) : new Date(),
         category_id: editingIncome.category_id || '',
         account_id: editingIncome.account_id || '',
         recurrence: editingIncome.recurrence || 'Única',
@@ -126,27 +133,55 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
     }
   }, [editingIncome]);
 
+  const validateForm = () => {
+    if (!formData.description.trim()) {
+      toast({
+        title: "Erro de validação",
+        description: "Descrição é obrigatória",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+      toast({
+        title: "Erro de validação", 
+        description: "Valor deve ser maior que zero",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    if (!formData.due_date) {
+      toast({
+        title: "Erro de validação",
+        description: "Data de recebimento é obrigatória",
+        variant: "destructive"
+      });
+      return false;
+    }
+
+    return true;
+  };
+
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!formData.description || !formData.amount) {
-      toast({
-        title: "Erro",
-        description: "Descrição e valor são obrigatórios",
-        variant: "destructive"
-      });
+    if (!validateForm()) {
       return;
     }
 
     const incomeData = {
-      description: formData.description,
+      description: formData.description.trim(),
       amount: parseFloat(formData.amount),
       due_date: formData.due_date.toISOString().split('T')[0],
       category_id: formData.category_id || null,
       account_id: formData.account_id || null,
       recurrence: formData.recurrence,
-      notes: formData.notes || null
+      notes: formData.notes?.trim() || null
     };
+
+    console.log('Enviando dados da receita:', incomeData);
 
     if (editingIncome) {
       updateIncomeMutation.mutate({ id: editingIncome.id, updates: incomeData });
@@ -165,7 +200,10 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
       });
       return;
     }
-    createCategoryMutation.mutate(newCategoryData);
+    createCategoryMutation.mutate({
+      name: newCategoryData.name.trim(),
+      color: newCategoryData.color
+    });
   };
 
   const handleClose = () => {
@@ -208,11 +246,12 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="amount">Valor *</Label>
+                <Label htmlFor="amount">Valor (R$) *</Label>
                 <Input
                   id="amount"
                   type="number"
                   step="0.01"
+                  min="0.01"
                   value={formData.amount}
                   onChange={(e) => setFormData({...formData, amount: e.target.value})}
                   placeholder="0,00"
@@ -240,7 +279,7 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
             </div>
 
             <div className="space-y-2">
-              <Label>Data de Recebimento</Label>
+              <Label>Data de Recebimento *</Label>
               <Popover>
                 <PopoverTrigger asChild>
                   <Button
@@ -329,7 +368,10 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
                 className="flex-1"
                 disabled={createIncomeMutation.isPending || updateIncomeMutation.isPending}
               >
-                {editingIncome ? 'Atualizar' : 'Criar'} Receita
+                {createIncomeMutation.isPending || updateIncomeMutation.isPending 
+                  ? 'Processando...' 
+                  : editingIncome ? 'Atualizar Receita' : 'Criar Receita'
+                }
               </Button>
               <Button type="button" variant="outline" onClick={handleClose}>
                 Cancelar
@@ -372,7 +414,7 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
 
             <div className="flex gap-2">
               <Button type="submit" className="flex-1" disabled={createCategoryMutation.isPending}>
-                Criar Categoria
+                {createCategoryMutation.isPending ? 'Criando...' : 'Criar Categoria'}
               </Button>
               <Button 
                 type="button" 

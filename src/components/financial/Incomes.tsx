@@ -2,34 +2,20 @@
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
-import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
-import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, TrendingUp, Calendar, Edit, Trash2, Repeat } from 'lucide-react';
-import { useToast } from "@/hooks/use-toast";
+import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { incomesService, bankAccountsService, categoriesService } from "@/services/supabaseService";
+import IncomeForm from './forms/IncomeForm';
 
 const Incomes = () => {
-  const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingIncome, setEditingIncome] = useState<any>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  
-  const [formData, setFormData] = useState({
-    description: '',
-    amount: '',
-    due_date: '',
-    account_id: '',
-    category_id: '',
-    recurrence: 'Única',
-    notes: ''
-  });
 
   // Fetch data
   const { data: incomes = [], isLoading: incomesLoading } = useQuery({
@@ -47,8 +33,6 @@ const Incomes = () => {
     queryFn: categoriesService.getAll
   });
 
-  const recurrenceOptions = ['Única', 'Semanal', 'Quinzenal', 'Mensal', 'Anual'];
-
   // Filter incomes by selected month/year
   const filteredIncomes = incomes.filter(income => {
     const incomeDate = new Date(income.due_date);
@@ -56,124 +40,42 @@ const Incomes = () => {
            incomeDate.getFullYear() === selectedYear;
   });
 
-  // Mutations
-  const createMutation = useMutation({
-    mutationFn: incomesService.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['incomes'] });
-      toast({
-        title: "Sucesso",
-        description: "Receita criada com sucesso!"
-      });
-      resetForm();
-      setIsDialogOpen(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro",
-        description: "Erro ao criar receita: " + error.message,
-        variant: "destructive"
-      });
-    }
-  });
-
-  const updateMutation = useMutation({
-    mutationFn: ({ id, updates }: { id: string, updates: any }) => 
-      incomesService.update(id, updates),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['incomes'] });
-      toast({
-        title: "Sucesso",
-        description: "Receita atualizada com sucesso!"
-      });
-      resetForm();
-      setEditingIncome(null);
-      setIsDialogOpen(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro",
-        description: "Erro ao atualizar receita: " + error.message,
-        variant: "destructive"
-      });
-    }
-  });
-
+  // Delete mutation
   const deleteMutation = useMutation({
     mutationFn: incomesService.delete,
     onSuccess: () => {
+      // Invalidate all related queries to ensure data consistency
       queryClient.invalidateQueries({ queryKey: ['incomes'] });
+      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
       toast({
-        title: "Sucesso",
-        description: "Receita removida com sucesso!"
+        title: "Receita removida",
+        description: "A receita foi removida com sucesso e o saldo da conta foi recalculado!"
       });
     },
     onError: (error: any) => {
+      console.error('Erro ao remover receita:', error);
       toast({
         title: "Erro",
-        description: "Erro ao remover receita: " + error.message,
+        description: "Erro ao remover receita. Tente novamente.",
         variant: "destructive"
       });
     }
   });
 
-  const resetForm = () => {
-    setFormData({ 
-      description: '', 
-      amount: '', 
-      due_date: '', 
-      account_id: '', 
-      category_id: '', 
-      recurrence: 'Única', 
-      notes: '' 
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.description.trim() || !formData.amount || !formData.due_date) {
-      toast({
-        title: "Erro",
-        description: "Descrição, valor e data de recebimento são obrigatórios",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const incomeData = {
-      description: formData.description,
-      amount: parseFloat(formData.amount),
-      due_date: formData.due_date,
-      account_id: formData.account_id || null,
-      category_id: formData.category_id || null,
-      recurrence: formData.recurrence,
-      notes: formData.notes || null
-    };
-
-    if (editingIncome) {
-      updateMutation.mutate({ id: editingIncome.id, updates: incomeData });
-    } else {
-      createMutation.mutate(incomeData);
-    }
-  };
-
   const handleEdit = (income: any) => {
     setEditingIncome(income);
-    setFormData({
-      description: income.description,
-      amount: income.amount.toString(),
-      due_date: income.due_date,
-      account_id: income.account_id || '',
-      category_id: income.category_id || '',
-      recurrence: income.recurrence || 'Única',
-      notes: income.notes || ''
-    });
-    setIsDialogOpen(true);
+    setIsFormOpen(true);
   };
 
   const handleDelete = (id: string) => {
-    deleteMutation.mutate(id);
+    if (window.confirm('Tem certeza que deseja remover esta receita?')) {
+      deleteMutation.mutate(id);
+    }
+  };
+
+  const handleNewIncome = () => {
+    setEditingIncome(null);
+    setIsFormOpen(true);
   };
 
   const totalIncomes = filteredIncomes.reduce((sum, inc) => sum + Number(inc.amount), 0);
@@ -191,7 +93,7 @@ const Incomes = () => {
 
   const getAccountName = (accountId: string) => {
     const account = accounts.find(acc => acc.id === accountId);
-    return account ? account.name : '';
+    return account ? `${account.name} - ${account.bank_name}` : '';
   };
 
   const getCategoryName = (categoryId: string) => {
@@ -212,7 +114,7 @@ const Incomes = () => {
   if (incomesLoading) {
     return (
       <div className="flex items-center justify-center p-8">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-green-600"></div>
       </div>
     );
   }
@@ -254,134 +156,13 @@ const Incomes = () => {
             </SelectContent>
           </Select>
           
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                className="bg-green-600 hover:bg-green-700"
-                onClick={() => {
-                  setEditingIncome(null);
-                  resetForm();
-                }}
-              >
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Nova Receita
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingIncome ? 'Editar Receita' : 'Nova Receita'}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingIncome ? 'Atualize os dados da receita.' : 'Cadastre uma nova receita.'}
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição *</Label>
-                  <Input
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    placeholder="Ex: Salário Empresa XYZ"
-                    required
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="amount">Valor (R$) *</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      step="0.01"
-                      value={formData.amount}
-                      onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="due_date">Data de Recebimento *</Label>
-                    <Input
-                      id="due_date"
-                      type="date"
-                      value={formData.due_date}
-                      onChange={(e) => setFormData({...formData, due_date: e.target.value})}
-                      required
-                    />
-                  </div>
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="account_id">Conta</Label>
-                    <Select value={formData.account_id} onValueChange={(value) => setFormData({...formData, account_id: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecionar conta" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {accounts.map((account) => (
-                          <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="category_id">Categoria</Label>
-                    <Select value={formData.category_id} onValueChange={(value) => setFormData({...formData, category_id: value})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecionar categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="recurrence">Tipo de Recorrência</Label>
-                  <Select value={formData.recurrence} onValueChange={(value) => setFormData({...formData, recurrence: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {recurrenceOptions.map((option) => (
-                        <SelectItem key={option} value={option}>{option}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Observações</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                    placeholder="Observações adicionais (opcional)"
-                    rows={3}
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-4">
-                  <Button type="submit" className="flex-1" disabled={createMutation.isPending || updateMutation.isPending}>
-                    {editingIncome ? 'Atualizar' : 'Criar Receita'}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setIsDialogOpen(false)}
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <Button 
+            className="bg-green-600 hover:bg-green-700"
+            onClick={handleNewIncome}
+          >
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Nova Receita
+          </Button>
         </div>
       </div>
 
@@ -482,13 +263,20 @@ const Incomes = () => {
             <p className="text-gray-600 mb-4">
               Não há receitas cadastradas para {months[selectedMonth]} de {selectedYear}.
             </p>
-            <Button onClick={() => setIsDialogOpen(true)}>
+            <Button onClick={handleNewIncome}>
               <PlusCircle className="h-4 w-4 mr-2" />
               Cadastrar Receita
             </Button>
           </CardContent>
         </Card>
       )}
+
+      {/* Income Form */}
+      <IncomeForm 
+        open={isFormOpen} 
+        onOpenChange={setIsFormOpen}
+        editingIncome={editingIncome}
+      />
     </div>  
   );
 };

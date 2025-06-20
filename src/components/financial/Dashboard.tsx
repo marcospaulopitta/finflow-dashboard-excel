@@ -23,27 +23,31 @@ const Dashboard = () => {
 
   const queryClient = useQueryClient();
 
-  // Fetch data
-  const { data: incomes = [] } = useQuery({
+  // Fetch data with proper error handling
+  const { data: incomes = [], isLoading: incomesLoading, error: incomesError } = useQuery({
     queryKey: ['incomes'],
-    queryFn: incomesService.getAll
+    queryFn: incomesService.getAll,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const { data: expenses = [] } = useQuery({
+  const { data: expenses = [], isLoading: expensesLoading, error: expensesError } = useQuery({
     queryKey: ['expenses'],
-    queryFn: expensesService.getAll
+    queryFn: expensesService.getAll,
+    staleTime: 5 * 60 * 1000, // 5 minutes
   });
 
-  const { data: accounts = [] } = useQuery({
+  const { data: accounts = [], isLoading: accountsLoading, error: accountsError } = useQuery({
     queryKey: ['bank_accounts'],
-    queryFn: bankAccountsService.getAll
+    queryFn: bankAccountsService.getAll,
+    staleTime: 1 * 60 * 1000, // 1 minute for more frequent balance updates
   });
 
-  // Update expense mutation - simplified since database triggers handle balance updates
+  // Update expense mutation with proper invalidation
   const updateExpenseMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string, updates: any }) => 
       expensesService.update(id, updates),
     onSuccess: () => {
+      // Invalidate all related queries to ensure data consistency
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
       queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
       toast({
@@ -52,9 +56,10 @@ const Dashboard = () => {
       });
     },
     onError: (error: any) => {
+      console.error('Erro ao pagar despesa:', error);
       toast({
         title: "Erro",
-        description: "Erro ao pagar despesa: " + error.message,
+        description: "Erro ao pagar despesa. Tente novamente.",
         variant: "destructive"
       });
     }
@@ -74,13 +79,13 @@ const Dashboard = () => {
            expenseDate.getFullYear() === currentDate.getFullYear();
   });
 
-  const totalIncomes = currentMonthIncomes.reduce((sum, income) => sum + Number(income.amount), 0);
-  const totalDebits = currentMonthExpenses.reduce((sum, expense) => sum + Number(expense.amount), 0);
+  const totalIncomes = currentMonthIncomes.reduce((sum, income) => sum + Number(income.amount || 0), 0);
+  const totalDebits = currentMonthExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
   const totalPaid = currentMonthExpenses
     .filter(expense => expense.is_paid)
-    .reduce((sum, expense) => sum + Number(expense.amount), 0);
+    .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
 
-  // Current balance is now the sum of all bank account balances (already updated by triggers)
+  // Current balance is the sum of all bank account balances (updated by triggers)
   const currentBalance = accounts.reduce((sum, acc) => sum + (Number(acc.balance) || 0), 0);
 
   // Generate chart data for different periods
@@ -95,12 +100,12 @@ const Dashboard = () => {
       const monthIncomes = incomes.filter(income => {
         const incomeDate = new Date(income.due_date);
         return incomeDate.getMonth() === i && incomeDate.getFullYear() === currentDate.getFullYear();
-      }).reduce((sum, income) => sum + Number(income.amount), 0);
+      }).reduce((sum, income) => sum + Number(income.amount || 0), 0);
 
       const monthExpenses = expenses.filter(expense => {
         const expenseDate = new Date(expense.due_date);
         return expenseDate.getMonth() === i && expenseDate.getFullYear() === currentDate.getFullYear();
-      }).reduce((sum, expense) => sum + Number(expense.amount), 0);
+      }).reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
 
       data.push({
         name: months[i],
@@ -119,7 +124,7 @@ const Dashboard = () => {
     currentMonthExpenses.forEach(expense => {
       const category = expense.category_id || 'Sem categoria';
       const current = categoryMap.get(category) || 0;
-      categoryMap.set(category, current + Number(expense.amount));
+      categoryMap.set(category, current + Number(expense.amount || 0));
     });
 
     const colors = ['#ef4444', '#dc2626', '#b91c1c', '#991b1b', '#7f1d1d', '#fca5a5'];
@@ -139,7 +144,16 @@ const Dashboard = () => {
 
   const handlePayExpense = async (expense: any) => {
     try {
-      // Simply mark the expense as paid - the database trigger will handle balance updates
+      if (!expense.account_id) {
+        toast({
+          title: "Erro",
+          description: "Esta despesa não possui uma conta vinculada. Edite a despesa para associar uma conta.",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      // Mark the expense as paid - the database trigger will handle balance updates
       await updateExpenseMutation.mutateAsync({ 
         id: expense.id, 
         updates: { 
@@ -175,6 +189,24 @@ const Dashboard = () => {
       description: "Abrindo relatório de despesas do mês vigente..."
     });
   };
+
+  // Loading state
+  if (incomesLoading || expensesLoading || accountsLoading) {
+    return (
+      <div className="flex items-center justify-center p-8">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600"></div>
+      </div>
+    );
+  }
+
+  // Error state
+  if (incomesError || expensesError || accountsError) {
+    return (
+      <div className="text-center p-8">
+        <p className="text-red-600">Erro ao carregar dados. Tente recarregar a página.</p>
+      </div>
+    );
+  }
 
   // ... keep existing code (renderChart function)
   const renderChart = () => {
@@ -411,7 +443,7 @@ const Dashboard = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="font-bold text-green-600">
-                          R$ {Number(income.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          R$ {Number(income.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </p>
                         <Button
                           size="sm"
@@ -450,7 +482,7 @@ const Dashboard = () => {
                       </div>
                       <div className="flex items-center gap-2">
                         <p className="font-bold text-red-600">
-                          R$ {Number(expense.amount).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                          R$ {Number(expense.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                         </p>
                         {!expense.is_paid && (
                           <>
@@ -458,6 +490,7 @@ const Dashboard = () => {
                               size="sm" 
                               variant="outline"
                               onClick={() => handlePayExpense(expense)}
+                              disabled={updateExpenseMutation.isPending}
                             >
                               Pagar
                             </Button>
