@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -40,7 +39,7 @@ const Dashboard = () => {
     queryFn: bankAccountsService.getAll
   });
 
-  // Update expense mutation
+  // Update expense mutation - simplified since database triggers handle balance updates
   const updateExpenseMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string, updates: any }) => 
       expensesService.update(id, updates),
@@ -49,7 +48,7 @@ const Dashboard = () => {
       queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
       toast({
         title: "Despesa Paga",
-        description: "A despesa foi marcada como paga e o valor foi deduzido da conta!"
+        description: "A despesa foi marcada como paga e o saldo da conta foi atualizado automaticamente!"
       });
     },
     onError: (error: any) => {
@@ -58,15 +57,6 @@ const Dashboard = () => {
         description: "Erro ao pagar despesa: " + error.message,
         variant: "destructive"
       });
-    }
-  });
-
-  // Update account balance mutation
-  const updateAccountMutation = useMutation({
-    mutationFn: ({ id, newBalance }: { id: string, newBalance: number }) => 
-      bankAccountsService.update(id, { balance: newBalance }),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
     }
   });
 
@@ -90,28 +80,8 @@ const Dashboard = () => {
     .filter(expense => expense.is_paid)
     .reduce((sum, expense) => sum + Number(expense.amount), 0);
 
-  // Calculate adjusted bank account balances with income values added
-  const adjustedAccountsBalance = useMemo(() => {
-    const baseBalance = accounts.reduce((sum, acc) => sum + (Number(acc.balance) || 0), 0);
-    
-    // Add income values to their respective accounts
-    const incomesByAccount = currentMonthIncomes.reduce((acc, income) => {
-      if (income.account_id) {
-        acc[income.account_id] = (acc[income.account_id] || 0) + Number(income.amount);
-      }
-      return acc;
-    }, {} as Record<string, number>);
-
-    // Calculate total income allocated to accounts
-    const allocatedIncome = Object.values(incomesByAccount).reduce((sum, amount) => sum + amount, 0);
-    
-    // Add non-allocated income (incomes without account_id) to base balance
-    const nonAllocatedIncome = totalIncomes - allocatedIncome;
-    
-    return baseBalance + totalIncomes;
-  }, [accounts, currentMonthIncomes, totalIncomes]);
-
-  const currentBalance = adjustedAccountsBalance;
+  // Current balance is now the sum of all bank account balances (already updated by triggers)
+  const currentBalance = accounts.reduce((sum, acc) => sum + (Number(acc.balance) || 0), 0);
 
   // Generate chart data for different periods
   const generateChartData = () => {
@@ -169,16 +139,7 @@ const Dashboard = () => {
 
   const handlePayExpense = async (expense: any) => {
     try {
-      // Find the account to deduct from
-      let targetAccount = null;
-      if (expense.account_id) {
-        targetAccount = accounts.find(acc => acc.id === expense.account_id);
-      } else if (expense.credit_card_id) {
-        // For credit card, we could implement different logic
-        // For now, let's just mark as paid without account deduction
-      }
-
-      // Update expense as paid
+      // Simply mark the expense as paid - the database trigger will handle balance updates
       await updateExpenseMutation.mutateAsync({ 
         id: expense.id, 
         updates: { 
@@ -186,16 +147,6 @@ const Dashboard = () => {
           paid_at: new Date().toISOString() 
         } 
       });
-
-      // Deduct from account balance if applicable
-      if (targetAccount) {
-        const newBalance = Number(targetAccount.balance) - Number(expense.amount);
-        await updateAccountMutation.mutateAsync({
-          id: targetAccount.id,
-          newBalance: newBalance
-        });
-      }
-
     } catch (error) {
       // Error handled by mutation
     }
@@ -225,6 +176,7 @@ const Dashboard = () => {
     });
   };
 
+  // ... keep existing code (renderChart function)
   const renderChart = () => {
     const chartProps = {
       data: chartData,
@@ -489,6 +441,11 @@ const Dashboard = () => {
                         <p className="font-medium">{expense.description}</p>
                         <p className="text-sm text-gray-600">
                           {new Date(expense.due_date).toLocaleDateString('pt-BR')}
+                          {expense.account_id && (
+                            <span className="ml-2 text-blue-600">
+                              • {accounts.find(acc => acc.id === expense.account_id)?.name || 'Conta'}
+                            </span>
+                          )}
                         </p>
                       </div>
                       <div className="flex items-center gap-2">
