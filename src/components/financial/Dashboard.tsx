@@ -1,4 +1,3 @@
-
 import React, { useState, useMemo } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -90,29 +89,9 @@ const Dashboard = () => {
     .filter(expense => expense.is_paid)
     .reduce((sum, expense) => sum + Number(expense.amount), 0);
 
-  // Calculate previous month balance
-  const previousMonthBalance = useMemo(() => {
-    const previousMonth = new Date(currentDate);
-    previousMonth.setMonth(currentDate.getMonth() - 1);
-    
-    const prevMonthIncomes = incomes.filter(income => {
-      const incomeDate = new Date(income.due_date);
-      return incomeDate.getMonth() === previousMonth.getMonth() && 
-             incomeDate.getFullYear() === previousMonth.getFullYear();
-    }).reduce((sum, income) => sum + Number(income.amount), 0);
-
-    const prevMonthPaid = expenses.filter(expense => {
-      const expenseDate = new Date(expense.due_date);
-      return expenseDate.getMonth() === previousMonth.getMonth() && 
-             expenseDate.getFullYear() === previousMonth.getFullYear() &&
-             expense.is_paid;
-    }).reduce((sum, expense) => sum + Number(expense.amount), 0);
-
-    return prevMonthIncomes - prevMonthPaid;
-  }, [incomes, expenses, currentDate]);
-
-  // Current Balance = Previous Month Balance + Current Month Incomes - Total Paid
-  const currentBalance = previousMonthBalance + totalIncomes - totalPaid;
+  // Calculate total balance: Bank accounts + Current month incomes
+  const bankAccountsBalance = accounts.reduce((sum, acc) => sum + (Number(acc.balance) || 0), 0);
+  const currentBalance = bankAccountsBalance + totalIncomes;
 
   // Generate chart data for different periods
   const generateChartData = () => {
