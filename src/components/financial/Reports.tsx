@@ -14,7 +14,7 @@ const Reports = () => {
     name: '',
     minValue: '',
     maxValue: '',
-    month: '',
+    month: 'all',
     year: new Date().getFullYear().toString()
   });
 
@@ -41,8 +41,8 @@ const Reports = () => {
       if (filters.minValue && Number(income.amount) < Number(filters.minValue)) return false;
       if (filters.maxValue && Number(income.amount) > Number(filters.maxValue)) return false;
       
-      // Month filter
-      if (filters.month && incomeDate.getMonth() !== Number(filters.month) - 1) return false;
+      // Month filter - adjusted to handle "all" value
+      if (filters.month !== 'all' && incomeDate.getMonth() !== Number(filters.month) - 1) return false;
       
       // Year filter
       if (filters.year && incomeDate.getFullYear() !== Number(filters.year)) return false;
@@ -62,8 +62,8 @@ const Reports = () => {
       if (filters.minValue && Number(expense.amount) < Number(filters.minValue)) return false;
       if (filters.maxValue && Number(expense.amount) > Number(filters.maxValue)) return false;
       
-      // Month filter
-      if (filters.month && expenseDate.getMonth() !== Number(filters.month) - 1) return false;
+      // Month filter - adjusted to handle "all" value
+      if (filters.month !== 'all' && expenseDate.getMonth() !== Number(filters.month) - 1) return false;
       
       // Year filter
       if (filters.year && expenseDate.getFullYear() !== Number(filters.year)) return false;
@@ -81,7 +81,7 @@ const Reports = () => {
       name: '',
       minValue: '',
       maxValue: '',
-      month: '',
+      month: 'all',
       year: new Date().getFullYear().toString()
     });
   };
@@ -185,7 +185,7 @@ const Reports = () => {
                   <SelectValue placeholder="Todos os meses" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="">Todos os meses</SelectItem>
+                  <SelectItem value="all">Todos os meses</SelectItem>
                   {months.map((month) => (
                     <SelectItem key={month.value} value={month.value}>
                       {month.label}
