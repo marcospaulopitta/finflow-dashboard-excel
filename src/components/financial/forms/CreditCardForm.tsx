@@ -161,7 +161,7 @@ const CreditCardForm = ({ open, onOpenChange, editingCard }: CreditCardFormProps
                 <SelectValue placeholder="Selecionar bandeira" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="">Sem bandeira</SelectItem>
+                <SelectItem value="none">Sem bandeira</SelectItem>
                 {cardBrands.map((brand) => (
                   <SelectItem key={brand.id} value={brand.id.toString()}>
                     {brand.display_name}
