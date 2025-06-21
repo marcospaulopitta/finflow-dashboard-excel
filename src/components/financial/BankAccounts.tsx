@@ -19,6 +19,13 @@ const ACCOUNT_TYPES = {
   3: 'Poupança'
 };
 
+// Account type options for Select component
+const ACCOUNT_TYPE_OPTIONS = [
+  { label: 'Conta Corrente', value: '1' },
+  { label: 'Conta Salário', value: '2' },
+  { label: 'Poupança', value: '3' },
+];
+
 const BankAccounts = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -29,7 +36,7 @@ const BankAccounts = () => {
     name: '',
     bank_name: '',
     balance: '',
-    account_type: 1
+    account_type: '1' // String for Select compatibility
   });
 
   // Fetch bank accounts
@@ -47,7 +54,7 @@ const BankAccounts = () => {
         title: "Sucesso",
         description: "Conta criada com sucesso!"
       });
-      setFormData({ name: '', bank_name: '', balance: '', account_type: 1 });
+      setFormData({ name: '', bank_name: '', balance: '', account_type: '1' });
       setIsDialogOpen(false);
     },
     onError: (error) => {
@@ -69,7 +76,7 @@ const BankAccounts = () => {
         title: "Sucesso",
         description: "Conta atualizada com sucesso!"
       });
-      setFormData({ name: '', bank_name: '', balance: '', account_type: 1 });
+      setFormData({ name: '', bank_name: '', balance: '', account_type: '1' });
       setEditingAccount(null);
       setIsDialogOpen(false);
     },
@@ -115,11 +122,20 @@ const BankAccounts = () => {
       return;
     }
 
+    if (!formData.account_type) {
+      toast({
+        title: "Erro",
+        description: "Tipo de conta é obrigatório",
+        variant: "destructive"
+      });
+      return;
+    }
+
     const accountData = {
       name: formData.name,
       bank_name: formData.bank_name,
       balance: parseFloat(formData.balance) || 0,
-      account_type: formData.account_type
+      account_type: parseInt(formData.account_type) // Convert to integer
     };
 
     if (editingAccount) {
@@ -138,7 +154,7 @@ const BankAccounts = () => {
       name: account.name,
       bank_name: account.bank_name || '',
       balance: account.balance?.toString() || '',
-      account_type: account.account_type || 1
+      account_type: account.account_type?.toString() || '1' // Convert to string for Select
     });
     setIsDialogOpen(true);
   };
@@ -150,6 +166,14 @@ const BankAccounts = () => {
   };
 
   const totalBalance = accounts.reduce((sum, acc) => sum + (Number(acc.balance) || 0), 0);
+
+  // Format currency to Brazilian Real
+  const formatCurrency = (value: number) => {
+    return new Intl.NumberFormat('pt-BR', {
+      style: 'currency',
+      currency: 'BRL'
+    }).format(value);
+  };
 
   if (isLoading) {
     return (
@@ -173,7 +197,7 @@ const BankAccounts = () => {
               className="bg-blue-600 hover:bg-blue-700"
               onClick={() => {
                 setEditingAccount(null);
-                setFormData({ name: '', bank_name: '', balance: '', account_type: 1 });
+                setFormData({ name: '', bank_name: '', balance: '', account_type: '1' });
               }}
             >
               <PlusCircle className="h-4 w-4 mr-2" />
@@ -210,18 +234,21 @@ const BankAccounts = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="account_type">Tipo de Conta</Label>
+                <Label htmlFor="account_type">Tipo de Conta *</Label>
                 <Select 
-                  value={formData.account_type.toString()} 
-                  onValueChange={(value) => setFormData({...formData, account_type: parseInt(value)})}
+                  value={formData.account_type} 
+                  onValueChange={(value) => setFormData({...formData, account_type: value})}
+                  required
                 >
                   <SelectTrigger>
                     <SelectValue placeholder="Selecione o tipo de conta" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="1">Conta Corrente</SelectItem>
-                    <SelectItem value="2">Conta Salário</SelectItem>
-                    <SelectItem value="3">Poupança</SelectItem>
+                    {ACCOUNT_TYPE_OPTIONS.map((option) => (
+                      <SelectItem key={option.value} value={option.value}>
+                        {option.label}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -267,7 +294,7 @@ const BankAccounts = () => {
             <div>
               <p className="text-blue-100">Saldo Total</p>
               <p className="text-3xl font-bold">
-                R$ {totalBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                {formatCurrency(totalBalance)}
               </p>
               <p className="text-blue-100 mt-1">{accounts.length} conta(s) cadastrada(s)</p>
             </div>
@@ -325,7 +352,7 @@ const BankAccounts = () => {
                     variant={Number(account.balance) >= 0 ? "default" : "destructive"}
                     className="text-base font-semibold px-3 py-1"
                   >
-                    R$ {Number(account.balance || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    {formatCurrency(Number(account.balance || 0))}
                   </Badge>
                 </div>
               </div>
