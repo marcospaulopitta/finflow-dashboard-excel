@@ -91,14 +91,21 @@ const Incomes = () => {
     }
   };
 
-  const getAccountName = (accountId: string) => {
+  // Safe methods to get account and category names with null/undefined/empty validation
+  const getAccountName = (accountId: string | null | undefined) => {
+    if (!accountId || accountId.trim() === '') {
+      return 'Conta não especificada';
+    }
     const account = accounts.find(acc => acc.id === accountId);
-    return account ? `${account.name} - ${account.bank_name}` : '';
+    return account ? `${account.name} - ${account.bank_name}` : 'Conta não encontrada';
   };
 
-  const getCategoryName = (categoryId: string) => {
+  const getCategoryName = (categoryId: string | null | undefined) => {
+    if (!categoryId || categoryId.trim() === '') {
+      return 'Categoria não especificada';
+    }
     const category = categories.find(cat => cat.id === categoryId);
-    return category ? category.name : '';
+    return category ? category.name : 'Categoria não encontrada';
   };
 
   const months = [
@@ -166,6 +173,25 @@ const Incomes = () => {
         </div>
       </div>
 
+      {/* Warning message if no accounts or categories */}
+      {(accounts.length === 0 || categories.length === 0) && (
+        <Card className="border-orange-200 bg-orange-50">
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-orange-600" />
+              <div>
+                <p className="text-orange-800 font-medium">Atenção: Configuração incompleta</p>
+                <p className="text-orange-700 text-sm">
+                  {accounts.length === 0 && "É recomendado cadastrar ao menos uma conta bancária. "}
+                  {categories.length === 0 && "É recomendado cadastrar ao menos uma categoria. "}
+                  Isso permitirá uma melhor organização das suas receitas.
+                </p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
       {/* Total Summary */}
       <Card className="border-0 shadow-lg bg-gradient-to-r from-green-500 to-green-600 text-white">
         <CardContent className="p-6">
@@ -225,12 +251,12 @@ const Incomes = () => {
                         {income.recurrence}
                       </Badge>
                     )}
-                    {income.category_id && (
+                    {income.category_id && income.category_id.trim() !== '' && (
                       <Badge variant="secondary" className="text-sm">
                         {getCategoryName(income.category_id)}
                       </Badge>
                     )}
-                    {income.account_id && (
+                    {income.account_id && income.account_id.trim() !== '' && (
                       <Badge variant="outline" className="text-sm">
                         {getAccountName(income.account_id)}
                       </Badge>

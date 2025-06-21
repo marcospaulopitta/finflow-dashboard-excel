@@ -312,7 +312,7 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
                     <SelectValue placeholder="Selecionar conta" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhuma conta</SelectItem>
+                    <SelectItem value="none">Nenhuma conta</SelectItem>
                     {accounts.map((account) => (
                       <SelectItem key={account.id} value={account.id}>
                         {account.name} - {account.bank_name}
@@ -320,6 +320,9 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
                     ))}
                   </SelectContent>
                 </Select>
+                {accounts.length === 0 && (
+                  <p className="text-sm text-orange-600">Nenhuma conta cadastrada. Cadastre uma conta para melhor organização.</p>
+                )}
               </div>
 
               <div className="space-y-2">
@@ -330,7 +333,7 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
                       <SelectValue placeholder="Selecionar categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sem categoria</SelectItem>
+                      <SelectItem value="none">Sem categoria</SelectItem>
                       {categories.map((category) => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
@@ -347,6 +350,9 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
                     <PlusCircle className="h-4 w-4" />
                   </Button>
                 </div>
+                {categories.length === 0 && (
+                  <p className="text-sm text-orange-600">Nenhuma categoria cadastrada. Crie uma categoria para melhor organização.</p>
+                )}
               </div>
             </div>
 
