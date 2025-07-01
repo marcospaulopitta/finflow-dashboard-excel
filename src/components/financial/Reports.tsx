@@ -7,7 +7,8 @@ import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Calendar, Filter, Download, TrendingUp, TrendingDown } from 'lucide-react';
 import { useQuery } from "@tanstack/react-query";
-import { incomesService, expensesService } from "@/services/supabaseService";
+import { incomesService } from "@/services/incomesService";
+import { expensesService } from "@/services/expensesService";
 
 const Reports = () => {
   const [filters, setFilters] = useState({

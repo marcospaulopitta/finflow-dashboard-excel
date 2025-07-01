@@ -7,7 +7,9 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 import { TrendingUp, TrendingDown, DollarSign, Calendar, Plus, Minus, Edit } from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { incomesService, expensesService, bankAccountsService } from "@/services/supabaseService";
+import { incomesService } from "@/services/incomesService";
+import { expensesService } from "@/services/expensesService";
+import { bankAccountsService } from "@/services/bankAccountsService";
 import ExpenseForm from './forms/ExpenseForm';
 import IncomeForm from './forms/IncomeForm';
 

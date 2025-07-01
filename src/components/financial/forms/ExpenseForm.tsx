@@ -14,7 +14,10 @@ import { format } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { expensesService, bankAccountsService, creditCardsService, categoriesService } from "@/services/supabaseService";
+import { expensesService } from "@/services/expensesService";
+import { bankAccountsService } from "@/services/bankAccountsService";
+import { creditCardsService } from "@/services/creditCardsService";
+import { categoriesService } from "@/services/categoriesService";
 
 interface ExpenseFormProps {
   open: boolean;

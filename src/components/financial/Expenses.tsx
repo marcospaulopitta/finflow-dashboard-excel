@@ -10,7 +10,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { PlusCircle, TrendingDown, Calendar, Edit, Trash2, Repeat, CreditCard } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { expensesService, bankAccountsService, creditCardsService, categoriesService } from "@/services/supabaseService";
+import { expensesService } from "@/services/expensesService";
+import { bankAccountsService } from "@/services/bankAccountsService";
+import { creditCardsService } from "@/services/creditCardsService";
+import { categoriesService } from "@/services/categoriesService";
 
 const Expenses = () => {
   const { toast } = useToast();

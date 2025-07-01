@@ -7,7 +7,9 @@ import { Badge } from "@/components/ui/badge";
 import { PlusCircle, TrendingUp, Calendar, Edit, Trash2, Repeat } from 'lucide-react';
 import { toast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { incomesService, bankAccountsService, categoriesService } from "@/services/supabaseService";
+import { incomesService } from "@/services/incomesService";
+import { bankAccountsService } from "@/services/bankAccountsService";
+import { categoriesService } from "@/services/categoriesService";
 import IncomeForm from './forms/IncomeForm';
 
 const Incomes = () => {

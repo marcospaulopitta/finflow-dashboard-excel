@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, Di
 import { Badge } from "@/components/ui/badge";
 import { PlusCircle, Building2, DollarSign, Edit, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
-import { bankAccountsService } from '@/services/supabaseService';
+import { bankAccountsService } from '@/services/bankAccountsService';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 
 // Account type mappings

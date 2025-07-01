@@ -6,7 +6,7 @@ import { Badge } from "@/components/ui/badge";
 import { PlusCircle, CreditCard, Calendar, DollarSign, Edit, Trash2 } from 'lucide-react';
 import { useToast } from "@/hooks/use-toast";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
-import { creditCardsService } from "@/services/supabaseService";
+import { creditCardsService } from "@/services/creditCardsService";
 import CreditCardForm from "./forms/CreditCardForm";
 
 const CreditCards = () => {

@@ -12,7 +12,9 @@ import { format } from 'date-fns';
 import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
-import { incomesService, bankAccountsService, categoriesService } from "@/services/supabaseService";
+import { incomesService } from "@/services/incomesService";
+import { bankAccountsService } from "@/services/bankAccountsService";
+import { categoriesService } from "@/services/categoriesService";
 
 interface IncomeFormProps {
   open: boolean;
