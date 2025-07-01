@@ -149,14 +149,18 @@ export type Database = {
           due_date: string
           id: string
           installment_amount: number | null
+          installment_number: number | null
           installments: number | null
           is_paid: boolean | null
           is_postponed: boolean | null
           notes: string | null
           original_due_date: string | null
           paid_at: string | null
+          parent_id: string | null
           recurrence: string | null
+          recurrence_parent_id: string | null
           total_amount: number | null
+          total_installments: number | null
           updated_at: string
           user_id: string
         }
@@ -171,14 +175,18 @@ export type Database = {
           due_date: string
           id?: string
           installment_amount?: number | null
+          installment_number?: number | null
           installments?: number | null
           is_paid?: boolean | null
           is_postponed?: boolean | null
           notes?: string | null
           original_due_date?: string | null
           paid_at?: string | null
+          parent_id?: string | null
           recurrence?: string | null
+          recurrence_parent_id?: string | null
           total_amount?: number | null
+          total_installments?: number | null
           updated_at?: string
           user_id: string
         }
@@ -193,14 +201,18 @@ export type Database = {
           due_date?: string
           id?: string
           installment_amount?: number | null
+          installment_number?: number | null
           installments?: number | null
           is_paid?: boolean | null
           is_postponed?: boolean | null
           notes?: string | null
           original_due_date?: string | null
           paid_at?: string | null
+          parent_id?: string | null
           recurrence?: string | null
+          recurrence_parent_id?: string | null
           total_amount?: number | null
+          total_installments?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -237,8 +249,12 @@ export type Database = {
           description: string
           due_date: string
           id: string
+          installment_number: number | null
           notes: string | null
+          parent_id: string | null
           recurrence: string | null
+          recurrence_parent_id: string | null
+          total_installments: number | null
           updated_at: string
           user_id: string
         }
@@ -250,8 +266,12 @@ export type Database = {
           description: string
           due_date: string
           id?: string
+          installment_number?: number | null
           notes?: string | null
+          parent_id?: string | null
           recurrence?: string | null
+          recurrence_parent_id?: string | null
+          total_installments?: number | null
           updated_at?: string
           user_id: string
         }
@@ -263,8 +283,12 @@ export type Database = {
           description?: string
           due_date?: string
           id?: string
+          installment_number?: number | null
           notes?: string | null
+          parent_id?: string | null
           recurrence?: string | null
+          recurrence_parent_id?: string | null
+          total_installments?: number | null
           updated_at?: string
           user_id?: string
         }
@@ -320,6 +344,42 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      create_expense_installments: {
+        Args: {
+          base_expense_data: Json
+          installment_count: number
+          installment_value: number
+          start_date: string
+        }
+        Returns: string[]
+      }
+      create_expense_recurrences: {
+        Args: {
+          base_expense_data: Json
+          recurrence_type: string
+          start_date: string
+          max_occurrences?: number
+        }
+        Returns: string[]
+      }
+      create_income_installments: {
+        Args: {
+          base_income_data: Json
+          installment_count: number
+          installment_value: number
+          start_date: string
+        }
+        Returns: string[]
+      }
+      create_income_recurrences: {
+        Args: {
+          base_income_data: Json
+          recurrence_type: string
+          start_date: string
+          max_occurrences?: number
+        }
+        Returns: string[]
+      }
       postpone_unpaid_expenses: {
         Args: Record<PropertyKey, never>
         Returns: undefined

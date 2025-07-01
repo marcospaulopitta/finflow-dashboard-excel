@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -24,7 +23,8 @@ interface IncomeFormProps {
 const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
   const [formData, setFormData] = useState({
     description: '',
-    amount: '',
+    installmentAmount: '',
+    installments: 1,
     due_date: new Date(),
     category_id: '',
     account_id: '',
@@ -54,13 +54,17 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
 
   const createIncomeMutation = useMutation({
     mutationFn: incomesService.create,
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       // Invalidate all related queries to ensure data consistency
       queryClient.invalidateQueries({ queryKey: ['incomes'] });
       queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
+      
+      // Handle response message for installments/recurrences
+      const message = response?.message || "A receita foi adicionada com sucesso!";
+      
       toast({
         title: "Receita criada",
-        description: "A receita foi adicionada com sucesso e o saldo da conta foi atualizado!"
+        description: message
       });
       handleClose();
     },
@@ -119,11 +123,20 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
     }
   });
 
+  // Calculate total amount
+  const totalAmount = formData.installmentAmount && formData.installments > 0 
+    ? parseFloat(formData.installmentAmount) * formData.installments 
+    : 0;
+
+  // Check if recurrence allows installments
+  const allowsInstallments = formData.recurrence !== 'Única';
+
   useEffect(() => {
     if (editingIncome) {
       setFormData({
         description: editingIncome.description || '',
-        amount: editingIncome.amount?.toString() || '',
+        installmentAmount: editingIncome.installment_amount?.toString() || editingIncome.amount?.toString() || '',
+        installments: editingIncome.installments || 1,
         due_date: editingIncome.due_date ? new Date(editingIncome.due_date) : new Date(),
         category_id: editingIncome.category_id || '',
         account_id: editingIncome.account_id || '',
@@ -143,10 +156,10 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
       return false;
     }
 
-    if (!formData.amount || parseFloat(formData.amount) <= 0) {
+    if (!formData.installmentAmount || parseFloat(formData.installmentAmount) <= 0) {
       toast({
         title: "Erro de validação", 
-        description: "Valor deve ser maior que zero",
+        description: "Valor da parcela deve ser maior que zero",
         variant: "destructive"
       });
       return false;
@@ -171,9 +184,15 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
       return;
     }
 
+    const installmentAmount = parseFloat(formData.installmentAmount);
+    const installments = formData.installments;
+
+    // Para parcelas ou recorrências, usar a nova lógica corrigida
     const incomeData = {
       description: formData.description.trim(),
-      amount: parseFloat(formData.amount),
+      amount: installmentAmount, // Agora é o valor da parcela individual
+      installment_amount: installmentAmount,
+      installments: installments,
       due_date: formData.due_date.toISOString().split('T')[0],
       category_id: formData.category_id || null,
       account_id: formData.account_id || null,
@@ -209,7 +228,8 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
   const handleClose = () => {
     setFormData({
       description: '',
-      amount: '',
+      installmentAmount: '',
+      installments: 1,
       due_date: new Date(),
       category_id: '',
       account_id: '',
@@ -222,7 +242,7 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[500px]">
+        <DialogContent className="sm:max-w-[500px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>
               {editingIncome ? 'Editar Receita' : 'Nova Receita'}
@@ -246,37 +266,47 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="amount">Valor (R$) *</Label>
+                <Label htmlFor="installmentAmount">Valor da Parcela *</Label>
                 <Input
-                  id="amount"
+                  id="installmentAmount"
                   type="number"
                   step="0.01"
                   min="0.01"
-                  value={formData.amount}
-                  onChange={(e) => setFormData({...formData, amount: e.target.value})}
+                  value={formData.installmentAmount}
+                  onChange={(e) => setFormData({...formData, installmentAmount: e.target.value})}
                   placeholder="0,00"
                   required
                 />
               </div>
 
               <div className="space-y-2">
-                <Label>Recorrência</Label>
-                <Select value={formData.recurrence} onValueChange={(value) => setFormData({...formData, recurrence: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Única">Única</SelectItem>
-                    <SelectItem value="Semanal">Semanal</SelectItem>
-                    <SelectItem value="Quinzenal">Quinzenal</SelectItem>
-                    <SelectItem value="Mensal">Mensal</SelectItem>
-                    <SelectItem value="Bimestral">Bimestral</SelectItem>
-                    <SelectItem value="Trimestral">Trimestral</SelectItem>
-                    <SelectItem value="Anual">Anual</SelectItem>
-                  </SelectContent>
-                </Select>
+                <Label htmlFor="installments">Parcelas</Label>
+                <Input
+                  id="installments"
+                  type="number"
+                  min="1"
+                  max="48"
+                  value={formData.installments}
+                  onChange={(e) => setFormData({...formData, installments: parseInt(e.target.value) || 1})}
+                  disabled={!allowsInstallments}
+                  className={!allowsInstallments ? 'bg-gray-100' : ''}
+                />
               </div>
             </div>
+
+            {/* Show total amount if installments > 1 or value entered */}
+            {(formData.installments > 1 || formData.installmentAmount) && (
+              <div className="p-3 bg-green-50 rounded-lg">
+                <p className="text-sm text-green-800">
+                  <strong>Valor Total:</strong> R$ {totalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
+                {formData.installments > 1 && (
+                  <p className="text-sm text-green-600">
+                    {formData.installments}x de R$ {parseFloat(formData.installmentAmount || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                  </p>
+                )}
+              </div>
+            )}
 
             <div className="space-y-2">
               <Label>Data de Recebimento *</Label>
@@ -304,6 +334,24 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
               </Popover>
             </div>
 
+            <div className="space-y-2">
+              <Label htmlFor="recurrence">Recorrência</Label>
+              <Select value={formData.recurrence} onValueChange={(value) => setFormData({...formData, recurrence: value, installments: value === 'Única' ? 1 : formData.installments})}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Única">Única</SelectItem>
+                  <SelectItem value="Semanal">Semanal</SelectItem>
+                  <SelectItem value="Quinzenal">Quinzenal</SelectItem>
+                  <SelectItem value="Mensal">Mensal</SelectItem>
+                  <SelectItem value="Bimestral">Bimestral</SelectItem>
+                  <SelectItem value="Trimestral">Trimestral</SelectItem>
+                  <SelectItem value="Anual">Anual</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Conta Bancária</Label>
@@ -312,7 +360,7 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
                     <SelectValue placeholder="Selecionar conta" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="none">Nenhuma conta</SelectItem>
+                    <SelectItem value="">Nenhuma conta</SelectItem>
                     {accounts.map((account) => (
                       <SelectItem key={account.id} value={account.id}>
                         {account.name} - {account.bank_name}
@@ -333,7 +381,7 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
                       <SelectValue placeholder="Selecionar categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="none">Sem categoria</SelectItem>
+                      <SelectItem value="">Sem categoria</SelectItem>
                       {categories.map((category) => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}

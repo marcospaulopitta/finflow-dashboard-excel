@@ -63,11 +63,16 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
 
   const createExpenseMutation = useMutation({
     mutationFn: expensesService.create,
-    onSuccess: () => {
+    onSuccess: (response: any) => {
       queryClient.invalidateQueries({ queryKey: ['expenses'] });
+      queryClient.invalidateQueries({ queryKey: ['bank_accounts'] });
+      
+      // Handle response message for installments/recurrences
+      const message = response?.message || "A despesa foi adicionada com sucesso!";
+      
       toast({
         title: "Despesa criada",
-        description: "A despesa foi adicionada com sucesso!"
+        description: message
       });
       handleClose();
     },
@@ -159,16 +164,14 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
     }
 
     const installmentAmount = parseFloat(formData.installmentAmount);
-    const installments = allowsInstallments ? formData.installments : 1;
-    const totalAmount = installmentAmount * installments;
+    const installments = formData.installments;
 
+    // Para parcelas, usar a nova lógica corrigida
     const expenseData = {
       description: formData.description,
-      amount: totalAmount,
+      amount: installmentAmount, // Agora é o valor da parcela individual
       installment_amount: installmentAmount,
       installments: installments,
-      current_installment: 1,
-      total_amount: totalAmount,
       due_date: formData.due_date.toISOString().split('T')[0],
       category_id: formData.category_id || null,
       account_id: formData.account_id || null,
