@@ -246,14 +246,18 @@ export type Database = {
           amount: number
           category_id: string | null
           created_at: string
+          current_installment: number | null
           description: string
           due_date: string
           id: string
+          installment_amount: number | null
           installment_number: number | null
+          installments: number | null
           notes: string | null
           parent_id: string | null
           recurrence: string | null
           recurrence_parent_id: string | null
+          total_amount: number | null
           total_installments: number | null
           updated_at: string
           user_id: string
@@ -263,14 +267,18 @@ export type Database = {
           amount: number
           category_id?: string | null
           created_at?: string
+          current_installment?: number | null
           description: string
           due_date: string
           id?: string
+          installment_amount?: number | null
           installment_number?: number | null
+          installments?: number | null
           notes?: string | null
           parent_id?: string | null
           recurrence?: string | null
           recurrence_parent_id?: string | null
+          total_amount?: number | null
           total_installments?: number | null
           updated_at?: string
           user_id: string
@@ -280,14 +288,18 @@ export type Database = {
           amount?: number
           category_id?: string | null
           created_at?: string
+          current_installment?: number | null
           description?: string
           due_date?: string
           id?: string
+          installment_amount?: number | null
           installment_number?: number | null
+          installments?: number | null
           notes?: string | null
           parent_id?: string | null
           recurrence?: string | null
           recurrence_parent_id?: string | null
+          total_amount?: number | null
           total_installments?: number | null
           updated_at?: string
           user_id?: string

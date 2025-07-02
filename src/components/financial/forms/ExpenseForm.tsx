@@ -8,6 +8,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Textarea } from "@/components/ui/textarea";
 import { Switch } from "@/components/ui/switch";
 import { Calendar } from "@/components/ui/calendar";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { CalendarIcon, PlusCircle } from 'lucide-react';
 import { format } from 'date-fns';
@@ -36,7 +37,9 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
     credit_card_id: '',
     recurrence: 'Única',
     notes: '',
-    is_paid: false
+    is_paid: false,
+    isInstallment: false,
+    isRecurring: false
   });
 
   const [newCategoryData, setNewCategoryData] = useState({
@@ -134,8 +137,9 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
     ? parseFloat(formData.installmentAmount) * formData.installments 
     : 0;
 
-  // Check if recurrence allows installments
-  const allowsInstallments = formData.recurrence !== 'Única';
+  // Check if installments or recurring is enabled
+  const allowsInstallments = formData.isInstallment;
+  const allowsRecurrence = formData.isRecurring;
 
   useEffect(() => {
     if (editingExpense) {
@@ -149,7 +153,9 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
         credit_card_id: editingExpense.credit_card_id || '',
         recurrence: editingExpense.recurrence || 'Única',
         notes: editingExpense.notes || '',
-        is_paid: editingExpense.is_paid || false
+        is_paid: editingExpense.is_paid || false,
+        isInstallment: editingExpense.installments > 1 || editingExpense.installment_amount !== null,
+        isRecurring: editingExpense.recurrence !== 'Única'
       });
     }
   }, [editingExpense]);
@@ -167,19 +173,18 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
     }
 
     const installmentAmount = parseFloat(formData.installmentAmount);
-    const installments = formData.installments;
+    const installments = formData.isInstallment ? formData.installments : 1;
 
-    // Para parcelas, usar a nova lógica corrigida
     const expenseData = {
       description: formData.description,
-      amount: installmentAmount, // Agora é o valor da parcela individual
-      installment_amount: installmentAmount,
+      amount: installmentAmount,
+      installment_amount: formData.isInstallment ? installmentAmount : null,
       installments: installments,
       due_date: formData.due_date.toISOString().split('T')[0],
       category_id: formData.category_id || null,
       account_id: formData.account_id || null,
       credit_card_id: formData.credit_card_id || null,
-      recurrence: formData.recurrence,
+      recurrence: formData.isRecurring ? formData.recurrence : 'Única',
       notes: formData.notes || null,
       is_paid: formData.is_paid
     };
@@ -215,7 +220,9 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
       credit_card_id: '',
       recurrence: 'Única',
       notes: '',
-      is_paid: false
+      is_paid: false,
+      isInstallment: false,
+      isRecurring: false
     });
     onOpenChange(false);
   };
@@ -261,46 +268,64 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
               />
             </div>
 
+            <div className="space-y-4">
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="isInstallment"
+                  checked={formData.isInstallment}
+                  onCheckedChange={(checked) => setFormData({...formData, isInstallment: !!checked, installments: checked ? formData.installments : 1})}
+                />
+                <Label htmlFor="isInstallment">Esta despesa é parcelada</Label>
+              </div>
+
+              <div className="flex items-center space-x-2">
+                <Checkbox
+                  id="isRecurring"
+                  checked={formData.isRecurring}
+                  onCheckedChange={(checked) => setFormData({...formData, isRecurring: !!checked, recurrence: checked ? formData.recurrence : 'Única'})}
+                />
+                <Label htmlFor="isRecurring">Esta despesa é recorrente</Label>
+              </div>
+            </div>
+
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="installmentAmount">Valor da Parcela *</Label>
+                <Label htmlFor="installmentAmount">{formData.isInstallment ? 'Valor da Parcela *' : 'Valor *'}</Label>
                 <Input
                   id="installmentAmount"
                   type="number"
                   step="0.01"
                   value={formData.installmentAmount}
                   onChange={(e) => setFormData({...formData, installmentAmount: e.target.value})}
-                  placeholder="333,33"
+                  placeholder="0,00"
                   required
                 />
               </div>
 
-              <div className="space-y-2">
-                <Label htmlFor="installments">Parcelas</Label>
-                <Input
-                  id="installments"
-                  type="number"
-                  min="1"
-                  max="48"
-                  value={formData.installments}
-                  onChange={(e) => setFormData({...formData, installments: parseInt(e.target.value) || 1})}
-                  disabled={!allowsInstallments}
-                  className={!allowsInstallments ? 'bg-gray-100' : ''}
-                />
-              </div>
+              {formData.isInstallment && (
+                <div className="space-y-2">
+                  <Label htmlFor="installments">Parcelas</Label>
+                  <Input
+                    id="installments"
+                    type="number"
+                    min="1"
+                    max="48"
+                    value={formData.installments}
+                    onChange={(e) => setFormData({...formData, installments: parseInt(e.target.value) || 1})}
+                  />
+                </div>
+              )}
             </div>
 
             {/* Show total amount if installments > 1 or value entered */}
-            {(formData.installments > 1 || formData.installmentAmount) && (
+            {formData.isInstallment && formData.installments > 1 && formData.installmentAmount && (
               <div className="p-3 bg-blue-50 rounded-lg">
                 <p className="text-sm text-blue-800">
                   <strong>Valor Total:</strong> R$ {totalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
                 </p>
-                {formData.installments > 1 && (
-                  <p className="text-sm text-blue-600">
-                    {formData.installments}x de R$ {parseFloat(formData.installmentAmount || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                  </p>
-                )}
+                <p className="text-sm text-blue-600">
+                  {formData.installments}x de R$ {parseFloat(formData.installmentAmount || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                </p>
               </div>
             )}
 
@@ -330,21 +355,24 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
               </Popover>
             </div>
 
-            <div className="space-y-2">
-              <Label htmlFor="recurrence">Recorrência</Label>
-              <Select value={formData.recurrence} onValueChange={(value) => setFormData({...formData, recurrence: value, installments: value === 'Única' ? 1 : formData.installments})}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Única">Única</SelectItem>
-                  <SelectItem value="Semanal">Semanal</SelectItem>
-                  <SelectItem value="Quinzenal">Quinzenal</SelectItem>
-                  <SelectItem value="Mensal">Mensal</SelectItem>
-                  <SelectItem value="Anual">Anual</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
+            {formData.isRecurring && (
+              <div className="space-y-2">
+                <Label htmlFor="recurrence">Recorrência</Label>
+                <Select value={formData.recurrence} onValueChange={(value) => setFormData({...formData, recurrence: value})}>
+                  <SelectTrigger>
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Semanal">Semanal</SelectItem>
+                    <SelectItem value="Quinzenal">Quinzenal</SelectItem>
+                    <SelectItem value="Mensal">Mensal</SelectItem>
+                    <SelectItem value="Bimestral">Bimestral</SelectItem>
+                    <SelectItem value="Trimestral">Trimestral</SelectItem>
+                    <SelectItem value="Anual">Anual</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
