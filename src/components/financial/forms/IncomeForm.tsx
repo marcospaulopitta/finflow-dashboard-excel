@@ -196,8 +196,8 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
       installment_amount: installmentAmount,
       installments: installments,
       due_date: formData.due_date.toISOString().split('T')[0],
-      category_id: formData.category_id || null,
-      account_id: formData.account_id || null,
+      category_id: formData.category_id === 'none' ? null : formData.category_id || null,
+      account_id: formData.account_id === 'none' ? null : formData.account_id || null,
       recurrence: formData.recurrence,
       notes: formData.notes?.trim() || null
     };
@@ -362,7 +362,7 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
                     <SelectValue placeholder="Selecionar conta" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhuma conta</SelectItem>
+                    <SelectItem value="none">Nenhuma conta</SelectItem>
                     {accounts.map((account) => (
                       <SelectItem key={account.id} value={account.id}>
                         {account.name} - {account.bank_name}
@@ -383,7 +383,7 @@ const IncomeForm = ({ open, onOpenChange, editingIncome }: IncomeFormProps) => {
                       <SelectValue placeholder="Selecionar categoria" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="">Sem categoria</SelectItem>
+                      <SelectItem value="none">Sem categoria</SelectItem>
                       {categories.map((category) => (
                         <SelectItem key={category.id} value={category.id}>
                           {category.name}
