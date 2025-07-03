@@ -230,7 +230,7 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
   const handleAccountChange = (value: string) => {
     setFormData(prev => ({
       ...prev,
-      account_id: value,
+      account_id: value === 'none' ? '' : value,
       credit_card_id: ''
     }));
   };
@@ -238,7 +238,7 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
   const handleCreditCardChange = (value: string) => {
     setFormData(prev => ({
       ...prev,
-      credit_card_id: value,
+      credit_card_id: value === 'none' ? '' : value,
       account_id: ''
     }));
   };
@@ -300,7 +300,7 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
                     <SelectValue placeholder="Selecionar conta" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhuma conta</SelectItem>
+                    <SelectItem value="none">Nenhuma conta</SelectItem>
                     {accounts.map((account) => (
                       <SelectItem key={account.id} value={account.id}>
                         {account.name} - {account.bank_name}
@@ -317,7 +317,7 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
                     <SelectValue placeholder="Selecionar cartão" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum cartão</SelectItem>
+                    <SelectItem value="none">Nenhum cartão</SelectItem>
                     {creditCards.map((card) => (
                       <SelectItem key={card.id} value={card.id}>
                         {card.name} - {card.bank_name}
@@ -332,12 +332,12 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
             <div className="space-y-2">
               <Label>Categoria</Label>
               <div className="flex gap-2">
-                <Select value={formData.category_id} onValueChange={(value) => setFormData({...formData, category_id: value})}>
+                <Select value={formData.category_id} onValueChange={(value) => setFormData({...formData, category_id: value === 'none' ? '' : value})}>
                   <SelectTrigger className="flex-1">
                     <SelectValue placeholder="Selecionar categoria" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Sem categoria</SelectItem>
+                    <SelectItem value="none">Sem categoria</SelectItem>
                     {categories.map((category) => (
                       <SelectItem key={category.id} value={category.id}>
                         {category.name}
