@@ -2,23 +2,20 @@
 import React, { useState, useEffect } from 'react';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
-import { Input } from "@/components/ui/input";
+import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Textarea } from "@/components/ui/textarea";
-import { Switch } from "@/components/ui/switch";
-import { Calendar } from "@/components/ui/calendar";
-import { Checkbox } from "@/components/ui/checkbox";
-import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
-import { CalendarIcon, PlusCircle } from 'lucide-react';
-import { format } from 'date-fns';
-import { cn } from "@/lib/utils";
 import { toast } from "@/hooks/use-toast";
 import { useMutation, useQueryClient, useQuery } from "@tanstack/react-query";
 import { expensesService } from "@/services/expensesService";
 import { bankAccountsService } from "@/services/bankAccountsService";
 import { creditCardsService } from "@/services/creditCardsService";
 import { categoriesService } from "@/services/categoriesService";
+import { FormField } from "./shared/FormField";
+import { InstallmentSection } from "./shared/InstallmentSection";
+import { RecurrenceSection } from "./shared/RecurrenceSection";
+import { DateSelector } from "./shared/DateSelector";
+import { CategoryDialog } from "./shared/CategoryDialog";
 
 interface ExpenseFormProps {
   open: boolean;
@@ -257,122 +254,40 @@ const ExpenseForm = ({ open, onOpenChange, editingExpense }: ExpenseFormProps) =
           </DialogHeader>
           
           <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="description">Descrição *</Label>
-              <Input
-                id="description"
-                value={formData.description}
-                onChange={(e) => setFormData({...formData, description: e.target.value})}
-                placeholder="Ex: Celular"
-                required
-              />
-            </div>
+            <FormField
+              label="Descrição"
+              id="description"
+              value={formData.description}
+              onChange={(value) => setFormData({...formData, description: value})}
+              placeholder="Ex: Celular"
+              required
+            />
 
-            <div className="space-y-4">
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="isInstallment"
-                  checked={formData.isInstallment}
-                  onCheckedChange={(checked) => setFormData({...formData, isInstallment: !!checked, installments: checked ? formData.installments : 1})}
-                />
-                <Label htmlFor="isInstallment">Esta despesa é parcelada</Label>
-              </div>
+            <RecurrenceSection
+              isRecurring={formData.isRecurring}
+              onRecurringChange={(checked) => setFormData({...formData, isRecurring: checked, recurrence: checked ? formData.recurrence : 'Única'})}
+              recurrence={formData.recurrence}
+              onRecurrenceChange={(value) => setFormData({...formData, recurrence: value})}
+              entityType="despesa"
+            />
 
-              <div className="flex items-center space-x-2">
-                <Checkbox
-                  id="isRecurring"
-                  checked={formData.isRecurring}
-                  onCheckedChange={(checked) => setFormData({...formData, isRecurring: !!checked, recurrence: checked ? formData.recurrence : 'Única'})}
-                />
-                <Label htmlFor="isRecurring">Esta despesa é recorrente</Label>
-              </div>
-            </div>
+            <InstallmentSection
+              isInstallment={formData.isInstallment}
+              onInstallmentChange={(checked) => setFormData({...formData, isInstallment: checked, installments: checked ? formData.installments : 1})}
+              installmentAmount={formData.installmentAmount}
+              onInstallmentAmountChange={(value) => setFormData({...formData, installmentAmount: value})}
+              installments={formData.installments}
+              onInstallmentsChange={(value) => setFormData({...formData, installments: value})}
+              totalAmount={totalAmount}
+              amountLabel="Despesa"
+              colorScheme="blue"
+            />
 
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="installmentAmount">{formData.isInstallment ? 'Valor da Parcela *' : 'Valor *'}</Label>
-                <Input
-                  id="installmentAmount"
-                  type="number"
-                  step="0.01"
-                  value={formData.installmentAmount}
-                  onChange={(e) => setFormData({...formData, installmentAmount: e.target.value})}
-                  placeholder="0,00"
-                  required
-                />
-              </div>
-
-              {formData.isInstallment && (
-                <div className="space-y-2">
-                  <Label htmlFor="installments">Parcelas</Label>
-                  <Input
-                    id="installments"
-                    type="number"
-                    min="1"
-                    max="48"
-                    value={formData.installments}
-                    onChange={(e) => setFormData({...formData, installments: parseInt(e.target.value) || 1})}
-                  />
-                </div>
-              )}
-            </div>
-
-            {/* Show total amount if installments > 1 or value entered */}
-            {formData.isInstallment && formData.installments > 1 && formData.installmentAmount && (
-              <div className="p-3 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-800">
-                  <strong>Valor Total:</strong> R$ {totalAmount.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </p>
-                <p className="text-sm text-blue-600">
-                  {formData.installments}x de R$ {parseFloat(formData.installmentAmount || '0').toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                </p>
-              </div>
-            )}
-
-            <div className="space-y-2">
-              <Label>Data de Vencimento</Label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal",
-                      !formData.due_date && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {formData.due_date ? format(formData.due_date, "dd/MM/yyyy") : "Selecionar"}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0">
-                  <Calendar
-                    mode="single"
-                    selected={formData.due_date}
-                    onSelect={(date) => date && setFormData({...formData, due_date: date})}
-                    initialFocus
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-
-            {formData.isRecurring && (
-              <div className="space-y-2">
-                <Label htmlFor="recurrence">Recorrência</Label>
-                <Select value={formData.recurrence} onValueChange={(value) => setFormData({...formData, recurrence: value})}>
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="Semanal">Semanal</SelectItem>
-                    <SelectItem value="Quinzenal">Quinzenal</SelectItem>
-                    <SelectItem value="Mensal">Mensal</SelectItem>
-                    <SelectItem value="Bimestral">Bimestral</SelectItem>
-                    <SelectItem value="Trimestral">Trimestral</SelectItem>
-                    <SelectItem value="Anual">Anual</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-            )}
+            <DateSelector
+              date={formData.due_date}
+              onDateChange={(date) => setFormData({...formData, due_date: date})}
+              label="Data de Vencimento"
+            />
 
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
