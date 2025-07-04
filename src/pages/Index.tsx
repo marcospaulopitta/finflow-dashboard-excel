@@ -14,6 +14,7 @@ import Incomes from '@/components/financial/Incomes';
 import Reports from '@/components/financial/Reports';
 import Settings from '@/components/financial/Settings';
 import Profile from '@/components/financial/Profile';
+import Extrato from '@/pages/Extrato';
 
 const Index = () => {
   const [activeTab, setActiveTab] = useState('dashboard');
@@ -63,7 +64,8 @@ const Index = () => {
 
   const tabs = [
     { id: 'dashboard', label: 'Dashboard', icon: BarChart3, component: Dashboard },
-    { id: 'reports', label: 'Relatórios', icon: FileText, component: Reports },
+    { id: 'extrato', label: 'Extrato', icon: FileText, component: Extrato },
+    { id: 'reports', label: 'Relatórios', icon: BarChart3, component: Reports },
     { id: 'accounts', label: 'Contas Bancárias', icon: PieChart, component: BankAccounts },
     { id: 'cards', label: 'Cartões de Crédito', icon: CreditCard, component: CreditCards },
     { id: 'expenses', label: 'Despesas', icon: TrendingDown, component: Expenses },
@@ -130,7 +132,7 @@ const Index = () => {
           <CardContent className="p-0">
             <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
               {/* Tab Navigation */}
-              <TabsList className={`grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-6 p-2 rounded-t-lg ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50/50'}`}>
+              <TabsList className={`grid w-full grid-cols-2 md:grid-cols-3 lg:grid-cols-7 p-2 rounded-t-lg ${darkMode ? 'bg-gray-700/50' : 'bg-gray-50/50'}`}>
                 {tabs.map((tab) => {
                   const IconComponent = tab.icon;
                   const isActive = activeTab === tab.id;
@@ -157,7 +159,11 @@ const Index = () => {
                   const ComponentToRender = tab.component;
                   return (
                     <TabsContent key={tab.id} value={tab.id} className="mt-0">
-                      <ComponentToRender />
+                      {tab.id === 'dashboard' ? (
+                        <ComponentToRender setActiveTab={setActiveTab} />
+                      ) : (
+                        <ComponentToRender />
+                      )}
                     </TabsContent>
                   );
                 })}

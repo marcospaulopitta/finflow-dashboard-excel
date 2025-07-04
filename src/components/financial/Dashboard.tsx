@@ -13,7 +13,7 @@ import { bankAccountsService } from "@/services/bankAccountsService";
 import ExpenseForm from './forms/ExpenseForm';
 import IncomeForm from './forms/IncomeForm';
 
-const Dashboard = () => {
+const Dashboard = ({ setActiveTab }: { setActiveTab?: (tab: string) => void }) => {
   const [chartType, setChartType] = useState('bar');
   const [period, setPeriod] = useState('month');
   const [selectedMonth, setSelectedMonth] = useState<string | null>(null);
@@ -81,14 +81,27 @@ const Dashboard = () => {
            expenseDate.getFullYear() === currentDate.getFullYear();
   });
 
+  // Filter expenses for next 10 days (for dashboard display)
+  const next10DaysExpenses = expenses.filter(expense => {
+    const expenseDate = new Date(expense.due_date);
+    const today = new Date();
+    const tenDaysFromNow = new Date();
+    tenDaysFromNow.setDate(today.getDate() + 10);
+    
+    return expenseDate >= today && expenseDate <= tenDaysFromNow;
+  });
+
   const totalIncomes = currentMonthIncomes.reduce((sum, income) => sum + Number(income.amount || 0), 0);
   const totalDebits = currentMonthExpenses.reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
   const totalPaid = currentMonthExpenses
     .filter(expense => expense.is_paid)
     .reduce((sum, expense) => sum + Number(expense.amount || 0), 0);
 
-  // Current balance is the sum of all bank account balances (updated by triggers)
-  const currentBalance = accounts.reduce((sum, acc) => sum + (Number(acc.balance) || 0), 0);
+  // Current balance calculation - only includes past and present values
+  const currentBalance = accounts.reduce((sum, acc) => {
+    // Bank account balance already reflects proper calculations via triggers
+    return sum + (Number(acc.balance) || 0);
+  }, 0);
 
   // Generate chart data for different periods
   const generateChartData = () => {
@@ -185,11 +198,17 @@ const Dashboard = () => {
     setIncomeFormOpen(true);
   };
 
-  const openExpensesReport = () => {
-    toast({
-      title: "Relatório de Despesas",
-      description: "Abrindo relatório de despesas do mês vigente..."
-    });
+  // Navigation handlers
+  const navigateToExpenses = () => {
+    setActiveTab?.('expenses');
+  };
+
+  const navigateToIncomes = () => {
+    setActiveTab?.('incomes');
+  };
+
+  const navigateToExtrato = () => {
+    setActiveTab?.('extrato');
   };
 
   // Loading state
@@ -272,25 +291,6 @@ const Dashboard = () => {
 
   const stats = [
     {
-      title: 'Total de Débitos',
-      value: `R$ ${totalDebits.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      change: `${currentMonthExpenses.length} despesa(s)`,
-      icon: TrendingDown,
-      color: 'text-red-600',
-      bgColor: 'bg-red-50',
-      clickable: true,
-      onClick: openExpensesReport
-    },
-    {
-      title: 'Total Pago',
-      value: `R$ ${totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
-      change: `${currentMonthExpenses.filter(e => e.is_paid).length} paga(s)`,
-      icon: TrendingUp,
-      color: 'text-green-600',
-      bgColor: 'bg-green-50',
-      clickable: false
-    },
-    {
       title: 'Saldo Atual',
       value: `R$ ${currentBalance.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       change: currentBalance >= 0 ? '+Positivo' : '-Negativo',
@@ -300,13 +300,34 @@ const Dashboard = () => {
       clickable: false
     },
     {
-      title: 'Receitas do Mês',
+      title: 'Total de Despesas',
+      value: `R$ ${totalDebits.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      change: `${currentMonthExpenses.length} despesa(s)`,
+      icon: TrendingDown,
+      color: 'text-red-600',
+      bgColor: 'bg-red-50',
+      clickable: true,
+      onClick: navigateToExpenses
+    },
+    {
+      title: 'Total de Receitas',
       value: `R$ ${totalIncomes.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
       change: `${currentMonthIncomes.length} receita(s)`,
       icon: TrendingUp,
       color: 'text-green-600',
       bgColor: 'bg-green-50',
-      clickable: false
+      clickable: true,
+      onClick: navigateToIncomes
+    },
+    {
+      title: 'Total Pago',
+      value: `R$ ${totalPaid.toLocaleString('pt-BR', { minimumFractionDigits: 2 })}`,
+      change: `${currentMonthExpenses.filter(e => e.is_paid).length} paga(s)`,
+      icon: TrendingUp,
+      color: 'text-green-600',
+      bgColor: 'bg-green-50',
+      clickable: true,
+      onClick: navigateToExtrato
     }
   ];
 
@@ -415,118 +436,110 @@ const Dashboard = () => {
         </CardContent>
       </Card>
 
-      {/* Current Month Records */}
+      {/* Category Control Section */}
       <Card className="border-0 shadow-lg">
         <CardHeader>
-          <CardTitle>Registros do Mês Vigente</CardTitle>
+          <CardTitle>Controle por Categoria</CardTitle>
           <CardDescription>
-            Receitas e despesas de {currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
+            Distribuição das despesas por categoria em {currentDate.toLocaleDateString('pt-BR', { month: 'long', year: 'numeric' })}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="space-y-4">
-            {/* Incomes */}
-            <div>
-              <h4 className="text-lg font-semibold text-green-600 mb-3">Receitas</h4>
-              {currentMonthIncomes.length > 0 ? (
-                <div className="space-y-2">
-                  {currentMonthIncomes.map((income) => (
-                    <div key={income.id} className="flex justify-between items-center p-3 bg-green-50 rounded-lg">
-                      <div>
-                        <p className="font-medium">{income.description}</p>
-                        <p className="text-sm text-gray-600">
-                          {new Date(income.due_date).toLocaleDateString('pt-BR')}
-                          {income.account_id && (
-                            <span className="ml-2 text-blue-600">
-                              • {accounts.find(acc => acc.id === income.account_id)?.name || 'Conta'}
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold text-green-600">
-                          R$ {Number(income.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </p>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => handleEditIncome(income)}
-                          className="h-8 w-8 p-0"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
+          {categoryData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={300}>
+              <PieChart>
+                <Pie
+                  data={categoryData}
+                  cx="50%"
+                  cy="50%"
+                  labelLine={false}
+                  label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  outerRadius={80}
+                  fill="#8884d8"
+                  dataKey="value"
+                >
+                  {categoryData.map((entry, index) => (
+                    <Cell key={`cell-${index}`} fill={entry.color} />
                   ))}
-                </div>
-              ) : (
-                <p className="text-gray-500">Nenhuma receita este mês</p>
-              )}
+                </Pie>
+                <Tooltip formatter={(value) => [`R$ ${value}`, 'Valor']} />
+              </PieChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="text-center p-8">
+              <p className="text-gray-500">Nenhuma despesa categorizada este mês</p>
             </div>
+          )}
+        </CardContent>
+      </Card>
 
-            {/* Expenses */}
-            <div>
-              <h4 className="text-lg font-semibold text-red-600 mb-3">Despesas</h4>
-              {currentMonthExpenses.length > 0 ? (
-                <div className="space-y-2">
-                  {currentMonthExpenses.map((expense) => (
-                    <div key={expense.id} className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
-                      <div className="flex-1">
-                        <p className="font-medium">{expense.description}</p>
-                        <p className="text-sm text-gray-600">
-                          {new Date(expense.due_date).toLocaleDateString('pt-BR')}
-                          {expense.account_id && (
-                            <span className="ml-2 text-blue-600">
-                              • {accounts.find(acc => acc.id === expense.account_id)?.name || 'Conta'}
-                            </span>
-                          )}
-                        </p>
-                      </div>
-                      <div className="flex items-center gap-2">
-                        <p className="font-bold text-red-600">
-                          R$ {Number(expense.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
-                        </p>
-                        {!expense.is_paid && (
-                          <>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handlePayExpense(expense)}
-                              disabled={updateExpenseMutation.isPending}
-                            >
-                              Pagar
-                            </Button>
-                            <Button 
-                              size="sm" 
-                              variant="outline"
-                              onClick={() => handlePostponeExpense(expense.id)}
-                            >
-                              Adiar
-                            </Button>
-                          </>
-                        )}
-                        <Button
-                          size="sm"
+      {/* Next 10 Days Expenses */}
+      <Card className="border-0 shadow-lg">
+        <CardHeader>
+          <CardTitle>Despesas Próximas</CardTitle>
+          <CardDescription>
+            Despesas com vencimento nos próximos 10 dias
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {next10DaysExpenses.length > 0 ? (
+            <div className="space-y-2">
+              {next10DaysExpenses.map((expense) => (
+                <div key={expense.id} className="flex justify-between items-center p-3 bg-red-50 rounded-lg">
+                  <div className="flex-1">
+                    <p className="font-medium">{expense.description}</p>
+                    <p className="text-sm text-gray-600">
+                      {new Date(expense.due_date).toLocaleDateString('pt-BR')}
+                      {expense.account_id && (
+                        <span className="ml-2 text-blue-600">
+                          • {accounts.find(acc => acc.id === expense.account_id)?.name || 'Conta'}
+                        </span>
+                      )}
+                    </p>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <p className="font-bold text-red-600">
+                      R$ {Number(expense.amount || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 })}
+                    </p>
+                    {!expense.is_paid && (
+                      <>
+                        <Button 
+                          size="sm" 
                           variant="outline"
-                          onClick={() => handleEditExpense(expense)}
-                          className="h-8 w-8 p-0"
+                          onClick={() => handlePayExpense(expense)}
+                          disabled={updateExpenseMutation.isPending}
                         >
-                          <Edit className="h-4 w-4" />
+                          Pagar
                         </Button>
-                        {expense.is_paid && (
-                          <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
-                            Pago
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  ))}
+                        <Button 
+                          size="sm" 
+                          variant="outline"
+                          onClick={() => handlePostponeExpense(expense.id)}
+                        >
+                          Adiar
+                        </Button>
+                      </>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      onClick={() => handleEditExpense(expense)}
+                      className="h-8 w-8 p-0"
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                    {expense.is_paid && (
+                      <span className="text-sm bg-green-100 text-green-800 px-2 py-1 rounded">
+                        Pago
+                      </span>
+                    )}
+                  </div>
                 </div>
-              ) : (
-                <p className="text-gray-500">Nenhuma despesa este mês</p>
-              )}
+              ))}
             </div>
-          </div>
+          ) : (
+            <p className="text-gray-500">Nenhuma despesa nos próximos 10 dias</p>
+          )}
         </CardContent>
       </Card>
 

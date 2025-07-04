@@ -14,32 +14,15 @@ import { expensesService } from "@/services/expensesService";
 import { bankAccountsService } from "@/services/bankAccountsService";
 import { creditCardsService } from "@/services/creditCardsService";
 import { categoriesService } from "@/services/categoriesService";
+import ExpenseForm from './forms/ExpenseForm';
 
 const Expenses = () => {
   const { toast } = useToast();
   const queryClient = useQueryClient();
-  const [isDialogOpen, setIsDialogOpen] = useState(false);
-  const [isCategoryDialogOpen, setIsCategoryDialogOpen] = useState(false);
+  const [isFormOpen, setIsFormOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<any>(null);
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  
-  const [formData, setFormData] = useState({
-    description: '',
-    amount: '',
-    due_date: '',
-    account_id: '',
-    credit_card_id: '',
-    category_id: '',
-    recurrence: 'Única',
-    installments: '1',
-    notes: ''
-  });
-
-  const [newCategoryData, setNewCategoryData] = useState({
-    name: '',
-    color: '#8b5cf6'
-  });
 
   // Fetch data
   const { data: expenses = [], isLoading: expensesLoading } = useQuery({
@@ -72,26 +55,6 @@ const Expenses = () => {
   });
 
   // Mutations
-  const createMutation = useMutation({
-    mutationFn: expensesService.create,
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['expenses'] });
-      toast({
-        title: "Sucesso",
-        description: "Despesa criada com sucesso!"
-      });
-      resetForm();
-      setIsDialogOpen(false);
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro",
-        description: "Erro ao criar despesa: " + error.message,
-        variant: "destructive"
-      });
-    }
-  });
-
   const updateMutation = useMutation({
     mutationFn: ({ id, updates }: { id: string, updates: any }) => 
       expensesService.update(id, updates),
@@ -101,9 +64,6 @@ const Expenses = () => {
         title: "Sucesso",
         description: "Despesa atualizada com sucesso!"
       });
-      resetForm();
-      setEditingExpense(null);
-      setIsDialogOpen(false);
     },
     onError: (error: any) => {
       toast({
@@ -132,106 +92,9 @@ const Expenses = () => {
     }
   });
 
-  const createCategoryMutation = useMutation({
-    mutationFn: categoriesService.create,
-    onSuccess: (newCategory) => {
-      queryClient.invalidateQueries({ queryKey: ['categories'] });
-      setFormData(prev => ({ ...prev, category_id: newCategory.id }));
-      setNewCategoryData({ name: '', color: '#8b5cf6' });
-      setIsCategoryDialogOpen(false);
-      toast({
-        title: "Sucesso",
-        description: "Categoria criada com sucesso!"
-      });
-    },
-    onError: (error: any) => {
-      toast({
-        title: "Erro",
-        description: "Erro ao criar categoria: " + error.message,
-        variant: "destructive"
-      });
-    }
-  });
-
-  const resetForm = () => {
-    setFormData({ 
-      description: '', 
-      amount: '', 
-      due_date: '',
-      account_id: '',
-      credit_card_id: '',
-      category_id: '', 
-      recurrence: 'Única',
-      installments: '1',
-      notes: '' 
-    });
-  };
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    
-    if (!formData.description.trim() || !formData.amount || !formData.due_date) {
-      toast({
-        title: "Erro",
-        description: "Descrição, valor e data de vencimento são obrigatórios",
-        variant: "destructive"
-      });
-      return;
-    }
-
-    const installments = parseInt(formData.installments) || 1;
-    const totalAmount = parseFloat(formData.amount);
-    const installmentAmount = installments > 1 ? totalAmount / installments : totalAmount;
-
-    const expenseData = {
-      description: formData.description,
-      amount: totalAmount,
-      due_date: formData.due_date,
-      account_id: formData.account_id || null,
-      credit_card_id: formData.credit_card_id || null,
-      category_id: formData.category_id || null,
-      recurrence: formData.recurrence,
-      installments: installments,
-      current_installment: 1,
-      installment_amount: installmentAmount,
-      total_amount: totalAmount,
-      notes: formData.notes || null
-    };
-
-    if (editingExpense) {
-      updateMutation.mutate({ id: editingExpense.id, updates: expenseData });
-    } else {
-      createMutation.mutate(expenseData);
-    }
-  };
-
-  const handleCreateCategory = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!newCategoryData.name.trim()) {
-      toast({
-        title: "Erro",
-        description: "Nome da categoria é obrigatório",
-        variant: "destructive"
-      });
-      return;
-    }
-    createCategoryMutation.mutate(newCategoryData);
-  };
-
   const handleEdit = (expense: any) => {
     setEditingExpense(expense);
-    setFormData({
-      description: expense.description,
-      amount: expense.amount.toString(),
-      due_date: expense.due_date,
-      account_id: expense.account_id || '',
-      credit_card_id: expense.credit_card_id || '',
-      category_id: expense.category_id || '',
-      recurrence: expense.recurrence || 'Única',
-      installments: expense.installments?.toString() || '1',
-      notes: expense.notes || ''
-    });
-    setIsDialogOpen(true);
+    setIsFormOpen(true);
   };
 
   const handleDelete = (id: string) => {
@@ -343,224 +206,18 @@ const Expenses = () => {
             </SelectContent>
           </Select>
           
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button 
-                className="bg-red-600 hover:bg-red-700"
-                onClick={() => {
-                  setEditingExpense(null);
-                  resetForm();
-                }}
-              >
-                <PlusCircle className="h-4 w-4 mr-2" />
-                Nova Despesa
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="sm:max-w-[500px]">
-              <DialogHeader>
-                <DialogTitle>
-                  {editingExpense ? 'Editar Despesa' : 'Nova Despesa'}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingExpense ? 'Atualize os dados da despesa.' : 'Cadastre uma nova despesa.'}
-                </DialogDescription>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-4 max-h-[70vh] overflow-y-auto">
-                <div className="space-y-2">
-                  <Label htmlFor="description">Descrição *</Label>
-                  <Input
-                    id="description"
-                    value={formData.description}
-                    onChange={(e) => setFormData({...formData, description: e.target.value})}
-                    placeholder="Ex: Supermercado Pão de Açúcar"
-                    required
-                  />
-                </div>
-                
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="amount">Valor Total (R$) *</Label>
-                    <Input
-                      id="amount"
-                      type="number"
-                      step="0.01"
-                      value={formData.amount}
-                      onChange={(e) => setFormData({...formData, amount: e.target.value})}
-                      placeholder="0.00"
-                      required
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="installments">Parcelas</Label>
-                    <Input
-                      id="installments"
-                      type="number"
-                      min="1"
-                      max="48"
-                      value={formData.installments}
-                      onChange={(e) => setFormData({...formData, installments: e.target.value})}
-                      placeholder="1"
-                    />
-                    {parseInt(formData.installments) > 1 && formData.amount && (
-                      <p className="text-sm text-gray-600">
-                        {formData.installments}x de R$ {(parseFloat(formData.amount) / parseInt(formData.installments)).toFixed(2)}
-                      </p>
-                    )}
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="due_date">Data de Vencimento *</Label>
-                  <Input
-                    id="due_date"
-                    type="date"
-                    value={formData.due_date}
-                    onChange={(e) => setFormData({...formData, due_date: e.target.value})}
-                    required
-                  />
-                </div>
-
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label htmlFor="account_id">Conta Bancária</Label>
-                    <Select value={formData.account_id} onValueChange={(value) => setFormData({...formData, account_id: value, credit_card_id: ''})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecionar conta" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {accounts.map((account) => (
-                          <SelectItem key={account.id} value={account.id}>{account.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="credit_card_id">Cartão de Crédito</Label>
-                    <Select value={formData.credit_card_id} onValueChange={(value) => setFormData({...formData, credit_card_id: value, account_id: ''})}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecionar cartão" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {creditCards.map((card) => (
-                          <SelectItem key={card.id} value={card.id}>{card.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="category_id">Categoria</Label>
-                  <div className="flex gap-2">
-                    <Select value={formData.category_id} onValueChange={(value) => setFormData({...formData, category_id: value})}>
-                      <SelectTrigger className="flex-1">
-                        <SelectValue placeholder="Selecionar categoria" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {categories.map((category) => (
-                          <SelectItem key={category.id} value={category.id}>{category.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    <Button 
-                      type="button" 
-                      variant="outline" 
-                      onClick={() => setIsCategoryDialogOpen(true)}
-                    >
-                      <PlusCircle className="h-4 w-4" />
-                    </Button>
-                  </div>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="recurrence">Tipo de Recorrência</Label>
-                  <Select value={formData.recurrence} onValueChange={(value) => setFormData({...formData, recurrence: value})}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {recurrenceOptions.map((option) => (
-                        <SelectItem key={option} value={option}>{option}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-
-                <div className="space-y-2">
-                  <Label htmlFor="notes">Observações</Label>
-                  <Textarea
-                    id="notes"
-                    value={formData.notes}
-                    onChange={(e) => setFormData({...formData, notes: e.target.value})}
-                    placeholder="Observações adicionais (opcional)"
-                    rows={3}
-                  />
-                </div>
-
-                <div className="flex gap-2 pt-4">
-                  <Button type="submit" className="flex-1" disabled={createMutation.isPending || updateMutation.isPending}>
-                    {editingExpense ? 'Atualizar' : 'Criar Despesa'}
-                  </Button>
-                  <Button 
-                    type="button" 
-                    variant="outline" 
-                    onClick={() => setIsDialogOpen(false)}
-                  >
-                    Cancelar
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
+          <Button 
+            className="bg-red-600 hover:bg-red-700"
+            onClick={() => {
+              setEditingExpense(null);
+              setIsFormOpen(true);
+            }}
+          >
+            <PlusCircle className="h-4 w-4 mr-2" />
+            Nova Despesa
+          </Button>
         </div>
       </div>
-
-      {/* New Category Dialog */}
-      <Dialog open={isCategoryDialogOpen} onOpenChange={setIsCategoryDialogOpen}>
-        <DialogContent className="sm:max-w-[400px]">
-          <DialogHeader>
-            <DialogTitle>Nova Categoria</DialogTitle>
-            <DialogDescription>
-              Crie uma nova categoria para organizar suas despesas.
-            </DialogDescription>
-          </DialogHeader>
-          <form onSubmit={handleCreateCategory} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="categoryName">Nome da Categoria *</Label>
-              <Input
-                id="categoryName"
-                value={newCategoryData.name}
-                onChange={(e) => setNewCategoryData({...newCategoryData, name: e.target.value})}
-                placeholder="Ex: Alimentação"
-                required
-              />
-            </div>
-            
-            <div className="space-y-2">
-              <Label htmlFor="categoryColor">Cor</Label>
-              <Input
-                id="categoryColor"
-                type="color"
-                value={newCategoryData.color}
-                onChange={(e) => setNewCategoryData({...newCategoryData, color: e.target.value})}
-              />
-            </div>
-
-            <div className="flex gap-2">
-              <Button type="submit" className="flex-1" disabled={createCategoryMutation.isPending}>
-                Criar Categoria
-              </Button>
-              <Button 
-                type="button" 
-                variant="outline" 
-                onClick={() => setIsCategoryDialogOpen(false)}
-              >
-                Cancelar
-              </Button>
-            </div>
-          </form>
-        </DialogContent>
-      </Dialog>
 
       {/* Total Summary */}
       <Card className="border-0 shadow-lg bg-gradient-to-r from-red-500 to-red-600 text-white">
@@ -698,13 +355,20 @@ const Expenses = () => {
             <p className="text-gray-600 mb-4">
               Não há despesas cadastradas para {months[selectedMonth]} de {selectedYear}.
             </p>
-            <Button onClick={() => setIsDialogOpen(true)}>
+            <Button onClick={() => setIsFormOpen(true)}>
               <PlusCircle className="h-4 w-4 mr-2" />
               Cadastrar Despesa
             </Button>
           </CardContent>
         </Card>
       )}
+
+      {/* Expense Form */}
+      <ExpenseForm 
+        open={isFormOpen} 
+        onOpenChange={setIsFormOpen}
+        editingExpense={editingExpense}
+      />
     </div>
   );
 };
